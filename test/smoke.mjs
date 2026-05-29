@@ -1,5 +1,11 @@
 import assert from 'node:assert';
 import {
+  createInspectArtifactFromBenchmarkReport,
+  createInspectArtifactFromEventLog,
+  createInspectArtifactFromLogRecords,
+  createInspectArtifactFromMigrationReport,
+  createInspectArtifactFromRouteImpact,
+  createInspectArtifactFromRouteManifest,
   createInspectArtifactsFromPlaywrightTimeline,
   createInspectBundle,
   createInspectFeatureMap,
@@ -46,6 +52,69 @@ const timeline = createInspectArtifactsFromPlaywrightTimeline([
   resources: ['route:/todos/:id']
 });
 
+const routeManifest = createInspectArtifactFromRouteManifest({
+  routes: [
+    {
+      id: 'todos.detail',
+      kind: 'route',
+      pattern: 'route:/todos/:id',
+      feature: 'todos',
+      package: '@app/todos',
+      reads: ['entities.todos'],
+      writes: ['ui.route'],
+      source: { file: 'src/todos/routes.ts' },
+      tags: ['route']
+    }
+  ],
+  transitions: [{ from: 'todos.list', to: 'todos.detail', kind: 'push', reads: ['auth.user'] }]
+}, { id: 'artifact:route-manifest', feature: 'todos' });
+
+const routeImpact = createInspectArtifactFromRouteImpact({
+  routeIds: ['todos.detail'],
+  transitionIds: ['transition:todos.detail'],
+  resources: ['route:/todos/:id'],
+  paths: ['/entities/todos', '/ui/route'],
+  files: ['src/todos/routes.ts'],
+  features: ['todos'],
+  packages: ['@app/todos'],
+  tags: ['route']
+}, { id: 'artifact:route-impact' });
+
+const migrationReport = createInspectArtifactFromMigrationReport({
+  registryId: 'todos',
+  fromVersion: '1',
+  toVersion: '2',
+  changed: true,
+  dryRun: false,
+  steps: [{ id: 'todos.v2', from: '1', to: '2', reads: ['entities.todos'], writes: ['entities.todosById'], elapsedMs: 2 }],
+  warnings: [{ severity: 'warning', message: 'manual review', path: 'entities.todos' }]
+}, { id: 'artifact:migration-report', feature: 'todos' });
+
+const logRecords = createInspectArtifactFromLogRecords([
+  {
+    time: 12,
+    level: 'warn',
+    name: 'todo.save.warn',
+    message: 'slow save',
+    attributes: { feature: 'todos', package: '@app/todos', entryId: 'todo.save', path: '/entities/todos', resource: 'route:/todos/:id' }
+  }
+], { id: 'artifact:logs' });
+
+const eventLog = createInspectArtifactFromEventLog([
+  {
+    offset: 1,
+    timestamp: 13,
+    key: 'todo.save',
+    headers: { feature: 'todos', path: '/entities/todos', resource: 'route:/todos/:id' },
+    value: { kind: 'patch', patch: [['replace', '/entities/todos/1/text', 'new']] }
+  }
+], { id: 'artifact:event-log' });
+
+const benchmark = createInspectArtifactFromBenchmarkReport({
+  package: '@app/todos',
+  rows: [{ fixture: 'todo-save', medianUs: 12, p95Us: 20 }]
+}, { id: 'artifact:benchmark', feature: 'todos' });
+
 const bundle = createInspectBundle({
   id: 'inspect:smoke',
   graph: {
@@ -72,6 +141,12 @@ const bundle = createInspectBundle({
   },
   artifacts: [
     timeline,
+    routeManifest,
+    routeImpact,
+    migrationReport,
+    logRecords,
+    eventLog,
+    benchmark,
     {
       id: 'artifact:migration',
       kind: 'migration',
@@ -95,17 +170,26 @@ const bundle = createInspectBundle({
   ]
 });
 
-assert.strictEqual(bundle.summary.entryCount, 2);
+assert.strictEqual(bundle.summary.entryCount, 5);
 assert.ok(bundle.summary.eventCount >= 5);
 assert.ok(bundle.graph.edges.some((edge) => edge.kind === 'declared-in' && edge.to === 'file:src/todos/save.ts'));
 
 const byFeature = queryInspectBundle(bundle, { features: ['todos'] });
-assert.strictEqual(byFeature.registry.entries.length, 2);
+assert.ok(byFeature.registry.entries.some((entry) => entry.id === 'todo.save'));
+assert.ok(byFeature.registry.entries.some((entry) => entry.id === 'todos.detail'));
 assert.ok(byFeature.artifacts.some((artifact) => artifact.id === 'artifact:playwright'));
 assert.ok(byFeature.events.some((event) => event.id === 'manual:telemetry'));
 
 const byResource = queryInspectBundle(bundle, { resources: ['route:/todos/:id'] });
 assert.ok(byResource.artifacts.some((artifact) => artifact.id === 'artifact:playwright'));
+assert.ok(byResource.artifacts.some((artifact) => artifact.id === 'artifact:route-impact'));
+assert.ok(byResource.events.some((event) => event.id.startsWith('log:')));
+
+const byArtifactKind = queryInspectBundle(bundle, { artifactKinds: ['migration-report'] });
+assert.strictEqual(byArtifactKind.artifacts[0].id, 'artifact:migration-report');
+
+const byStatus = queryInspectBundle(bundle, { statuses: ['pending'] });
+assert.ok(byStatus.events.some((event) => event.type === 'migration.diagnostic'));
 
 const impact = traceInspectImpact(bundle, { paths: ['entities.todos'] });
 assert.ok(impact.registry.entries.some((entry) => entry.id === 'todo.save'));
@@ -116,7 +200,9 @@ const featureMap = createInspectFeatureMap(bundle);
 const todos = featureMap.features.find((feature) => feature.id === 'todos');
 assert.ok(todos);
 assert.ok(todos.entries.includes('todo.save'));
+assert.ok(todos.entries.includes('todos.detail'));
 assert.ok(todos.artifacts.includes('artifact:playwright'));
+assert.ok(todos.benchmarks.includes('artifact:benchmark'));
 assert.ok(todos.events.includes('manual:telemetry'));
 
 const proof = createInspectProof(bundle);

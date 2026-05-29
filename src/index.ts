@@ -48,11 +48,16 @@ export type FrontierInspectArtifactKind =
   | 'playwright-sample'
   | 'playwright-report'
   | 'event-log'
+  | 'event-log-records'
+  | 'route-manifest'
   | 'route-impact'
   | 'migration'
+  | 'migration-report'
   | 'benchmark'
+  | 'benchmark-report'
   | 'test'
   | 'telemetry'
+  | 'log-records'
   | string;
 
 export type FrontierInspectEventSeverity = 'debug' | 'info' | 'warning' | 'error' | string;
@@ -386,14 +391,212 @@ export interface FrontierInspectPlaywrightMarkLike {
   data?: unknown;
 }
 
+export interface FrontierInspectRouteManifestLike {
+  kind?: string;
+  version?: number;
+  generatedAt?: FrontierInspectTimestamp;
+  routes?: readonly FrontierInspectRouteEntryLike[];
+  transitions?: readonly FrontierInspectRouteTransitionLike[];
+  diagnostics?: readonly FrontierInspectDiagnosticLike[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectRouteEntryLike {
+  id: string;
+  kind?: string;
+  resource?: string;
+  pattern?: string;
+  parentId?: string;
+  title?: string;
+  feature?: string;
+  owner?: string;
+  package?: string;
+  source?: FrontierInspectSourceLike | readonly FrontierInspectSourceLike[];
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  loads?: readonly (string | FrontierInspectDescriptorLike)[];
+  emits?: readonly string[];
+  guards?: readonly (string | FrontierInspectDescriptorLike)[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectRouteTransitionLike {
+  id?: string;
+  from?: string | readonly string[];
+  to: string;
+  kind?: string;
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  loads?: readonly (string | FrontierInspectDescriptorLike)[];
+  emits?: readonly string[];
+  guards?: readonly (string | FrontierInspectDescriptorLike)[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectRouteImpactLike {
+  kind?: string;
+  version?: number;
+  seeds?: readonly string[];
+  routeIds?: readonly string[];
+  transitionIds?: readonly string[];
+  routes?: readonly FrontierInspectRouteEntryLike[];
+  transitions?: readonly FrontierInspectRouteTransitionLike[];
+  resources?: readonly string[];
+  paths?: readonly string[];
+  reads?: readonly string[];
+  writes?: readonly string[];
+  loads?: readonly string[];
+  guards?: readonly string[];
+  emits?: readonly string[];
+  files?: readonly string[];
+  features?: readonly string[];
+  packages?: readonly string[];
+  tags?: readonly string[];
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectMigrationReportLike {
+  kind?: string;
+  registryId?: string;
+  source?: string;
+  plugin?: string;
+  api?: string;
+  actor?: string;
+  fromVersion?: string | number;
+  toVersion?: string | number;
+  targetVersion?: string | number;
+  changed?: boolean;
+  dryRun?: boolean;
+  stepCount?: number;
+  steps?: readonly FrontierInspectMigrationStepLike[];
+  warnings?: readonly FrontierInspectDiagnosticLike[];
+  elapsedMs?: number;
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectMigrationStepLike {
+  id: string;
+  from?: string | number;
+  to?: string | number;
+  direction?: string;
+  checksum?: string;
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  elapsedMs?: number;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectDiagnosticLike {
+  severity?: FrontierInspectEventSeverity;
+  code?: string;
+  message?: string;
+  routeId?: string;
+  transitionId?: string;
+  stepId?: string;
+  path?: FrontierRegistryPath;
+  detail?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectLogRecordLike {
+  time?: number;
+  observedTime?: number;
+  level?: string;
+  severityNumber?: number;
+  name?: string;
+  message?: string;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  durationMs?: number;
+  resource?: Record<string, unknown>;
+  scope?: string;
+  attributes?: Record<string, unknown>;
+  telemetry?: Record<string, unknown>;
+  patch?: Record<string, unknown>;
+  crdt?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectEventLogRecordLike {
+  offset?: number;
+  timestamp?: number;
+  key?: string;
+  value?: unknown;
+  headers?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectBenchmarkReportLike {
+  package?: string;
+  version?: string;
+  generatedAt?: FrontierInspectTimestamp;
+  entryCount?: number;
+  rounds?: number;
+  rows?: readonly FrontierInspectBenchmarkRowLike[];
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectBenchmarkRowLike {
+  fixture?: string;
+  name?: string;
+  medianUs?: number;
+  p95Us?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectSourceLike {
+  file: string;
+  line?: number;
+  column?: number;
+  symbol?: string;
+  exportName?: string;
+  package?: string;
+}
+
+export interface FrontierInspectDescriptorLike {
+  id?: string;
+  kind?: string;
+  resource?: string;
+  reads?: readonly FrontierRegistryPath[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
 interface FrontierInspectBundleIndex {
   registry: FrontierRegistryIndex;
   artifactsById: Map<string, FrontierInspectArtifact>;
   eventsById: Map<string, FrontierInspectEvent>;
+  artifactOrder: Map<string, number>;
+  eventOrder: Map<string, number>;
+  artifactIdsByKind: Map<string, Set<string>>;
+  artifactIdsBySourcePackage: Map<string, Set<string>>;
+  artifactIdsByPackage: Map<string, Set<string>>;
+  artifactIdsByFeature: Map<string, Set<string>>;
+  artifactIdsByTag: Map<string, Set<string>>;
+  artifactIdsByFile: Map<string, Set<string>>;
+  artifactIdsByPath: Map<string, Set<string>>;
+  artifactIdsByResource: Map<string, Set<string>>;
   artifactIdsByEntryId: Map<string, Set<string>>;
   eventIdsByEntryId: Map<string, Set<string>>;
   artifactIdsByRecordId: Map<string, Set<string>>;
   eventIdsByRecordId: Map<string, Set<string>>;
+  eventIdsBySourcePackage: Map<string, Set<string>>;
+  eventIdsByPackage: Map<string, Set<string>>;
+  eventIdsByFeature: Map<string, Set<string>>;
+  eventIdsByTag: Map<string, Set<string>>;
+  eventIdsByFile: Map<string, Set<string>>;
+  eventIdsByPath: Map<string, Set<string>>;
+  eventIdsByResource: Map<string, Set<string>>;
+  eventIdsByStatus: Map<string, Set<string>>;
+  eventIdsBySeverity: Map<string, Set<string>>;
 }
 
 const bundleIndexes = new WeakMap<FrontierInspectBundle, FrontierInspectBundleIndex>();
@@ -471,6 +674,222 @@ export function createInspectArtifactsFromPlaywrightTimeline(
   return normalizeArtifact({ ...options, kind: 'timeline', timeline }, 0);
 }
 
+export function createInspectArtifactFromRouteManifest(
+  manifest: FrontierInspectRouteManifestLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const entries = routeEntriesFromManifest(manifest, options);
+  const diagnostics = eventsFromDiagnostics(manifest.diagnostics ?? [], 'route', options);
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:route-manifest',
+    kind: 'route-manifest',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-route',
+    timestamp: options.timestamp ?? manifest.generatedAt,
+    tags: uniqueStrings((options.tags ?? []).concat(['route'])),
+    graph: { entries },
+    files: unionArray(options.files, filesFromRouteManifest(manifest)),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), pathsFromRouteManifest(manifest)),
+    resources: unionArray(options.resources, resourcesFromRouteManifest(manifest)),
+    events: diagnostics,
+    data: toJsonValue({
+      kind: manifest.kind ?? 'frontier.route.manifest',
+      version: manifest.version,
+      routeCount: manifest.routes?.length ?? 0,
+      transitionCount: manifest.transitions?.length ?? 0,
+      diagnosticCount: manifest.diagnostics?.length ?? 0
+    }),
+    metadata: mergeMetadata(options.metadata, manifest.metadata)
+  }, 0);
+}
+
+export function createInspectArtifactFromRouteImpact(
+  impact: FrontierInspectRouteImpactLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const manifest: FrontierInspectRouteManifestLike = {
+    routes: impact.routes ?? [],
+    transitions: impact.transitions ?? []
+  };
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:route-impact',
+    kind: 'route-impact',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-route',
+    feature: options.feature ?? singletonOrUndefined(impact.features),
+    package: options.package ?? singletonOrUndefined(impact.packages),
+    tags: uniqueStrings((options.tags ?? []).concat(impact.tags ?? [], ['route-impact'])),
+    graph: { entries: routeEntriesFromManifest(manifest, options) },
+    files: unionArray(options.files, impact.files),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), impact.paths),
+    resources: unionArray(options.resources, impact.resources),
+    entryIds: unionArray(options.entryIds, (impact.routeIds ?? []).concat(impact.transitionIds ?? [])),
+    data: toJsonValue({
+      kind: impact.kind ?? 'frontier.route.impact',
+      version: impact.version,
+      seeds: impact.seeds ?? [],
+      routeIds: impact.routeIds ?? [],
+      transitionIds: impact.transitionIds ?? [],
+      reads: impact.reads ?? [],
+      writes: impact.writes ?? [],
+      loads: impact.loads ?? [],
+      guards: impact.guards ?? [],
+      emits: impact.emits ?? []
+    })
+  }, 0);
+}
+
+export function createInspectArtifactFromMigrationReport(
+  report: FrontierInspectMigrationReportLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const steps = report.steps ?? [];
+  const entries: FrontierRegistryEntry[] = steps.map((step) => ({
+    id: String(step.id),
+    kind: 'migration',
+    package: options.package ?? options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    feature: options.feature,
+    reads: step.reads,
+    writes: step.writes,
+    tags: uniqueStrings((options.tags ?? []).concat(['migration'])),
+    metadata: toJsonObject({
+      from: step.from,
+      to: step.to,
+      direction: step.direction,
+      checksum: step.checksum,
+      elapsedMs: step.elapsedMs
+    })
+  }));
+  const records: FrontierRegistryRecord[] = steps.map((step) => ({
+    id: 'migration-step:' + step.id,
+    entryId: String(step.id),
+    kind: 'migration',
+    status: report.dryRun === true ? 'pending' : 'ok',
+    durationMs: step.elapsedMs,
+    reads: step.reads,
+    writes: step.writes
+  }));
+  const events = steps.map((step, index) => normalizeEvent({
+    id: 'migration:' + step.id,
+    type: 'migration-step',
+    source: 'migration',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    entryId: String(step.id),
+    recordId: 'migration-step:' + step.id,
+    feature: options.feature,
+    package: options.package ?? options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    tags: options.tags,
+    status: report.changed === true ? 'changed' : 'ok',
+    value: toJsonValue(step)
+  }, index)).concat(
+    eventsFromDiagnostics(report.warnings ?? [], 'migration', options)
+      .map((event, index) => normalizeEvent(event, steps.length + index))
+  );
+  const paths = uniqueStrings(steps.flatMap((step) => (step.reads ?? []).concat(step.writes ?? []).map((path) => normalizeFrontierRegistryPath(path))));
+  const migrationResource = 'migration:' + String(report.registryId ?? 'registry') + ':' +
+    String(report.fromVersion ?? 'unknown') + '->' + String(report.toVersion ?? report.targetVersion ?? 'unknown');
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:migration:' + String(report.registryId ?? 'registry'),
+    kind: 'migration-report',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    tags: uniqueStrings((options.tags ?? []).concat(report.dryRun === true ? ['migration', 'dry-run'] : ['migration'])),
+    graph: { entries, records },
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), paths),
+    resources: unionArray(options.resources, [migrationResource]),
+    events,
+    data: toJsonValue({
+      kind: report.kind ?? 'frontier.migration.report',
+      registryId: report.registryId,
+      source: report.source,
+      plugin: report.plugin,
+      api: report.api,
+      actor: report.actor,
+      fromVersion: report.fromVersion,
+      toVersion: report.toVersion,
+      targetVersion: report.targetVersion,
+      changed: report.changed,
+      dryRun: report.dryRun,
+      stepCount: report.stepCount ?? steps.length,
+      warningCount: report.warnings?.length ?? 0,
+      elapsedMs: report.elapsedMs
+    }),
+    metadata: mergeMetadata(options.metadata, report.metadata)
+  }, 0);
+}
+
+export function createInspectArtifactFromLogRecords(
+  records: readonly FrontierInspectLogRecordLike[],
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const events = records.map((record, index) => eventFromLogRecord(record, index, options));
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:log-records',
+    kind: 'log-records',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-logging',
+    tags: uniqueStrings((options.tags ?? []).concat(['telemetry', 'logging'])),
+    files: unionArray(options.files, events.map((event) => event.file).filter(isString)),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), events.map((event) => event.path).filter(isString)),
+    resources: unionArray(options.resources, events.map((event) => event.resource).filter(isString)),
+    events,
+    data: toJsonValue({ recordCount: records.length })
+  }, 0);
+}
+
+export function createInspectArtifactFromEventLog(
+  records: readonly FrontierInspectEventLogRecordLike[],
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const events = records.map((record, index) => eventFromEventLogRecord(record, index, options));
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:event-log',
+    kind: 'event-log-records',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-event-log',
+    tags: uniqueStrings((options.tags ?? []).concat(['event-log'])),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), events.map((event) => event.path).filter(isString)),
+    resources: unionArray(options.resources, events.map((event) => event.resource).filter(isString)),
+    events,
+    data: toJsonValue({ recordCount: records.length })
+  }, 0);
+}
+
+export function createInspectArtifactFromBenchmarkReport(
+  report: FrontierInspectBenchmarkReportLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const rows = report.rows ?? [];
+  const events = rows.map((row, index) => normalizeEvent({
+    id: 'benchmark:' + String(row.fixture ?? row.name ?? index),
+    type: 'benchmark',
+    source: 'benchmark',
+    sourcePackage: options.sourcePackage,
+    feature: options.feature,
+    package: options.package ?? report.package,
+    tags: options.tags,
+    status: row.status ?? 'ok',
+    value: toJsonValue(row)
+  }, index));
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:benchmark:' + String(report.package ?? 'package'),
+    kind: 'benchmark-report',
+    sourcePackage: options.sourcePackage ?? String(report.package ?? '@shapeshift-labs/frontier'),
+    package: options.package ?? report.package,
+    timestamp: options.timestamp ?? report.generatedAt,
+    tags: uniqueStrings((options.tags ?? []).concat(['benchmark'])),
+    events,
+    data: toJsonValue({
+      package: report.package,
+      version: report.version,
+      entryCount: report.entryCount,
+      rounds: report.rounds,
+      rowCount: rows.length
+    })
+  }, 0);
+}
+
 export function appendInspectArtifact(
   bundle: FrontierInspectBundle,
   artifact: FrontierInspectArtifactInput
@@ -515,18 +934,21 @@ export function queryInspectBundle(
     : emptyRegistryQuery();
   const registryEntryIds = new Set(registry.entries.map((entry) => entry.id));
   const registryRecordIds = new Set(registry.records.map((record) => record.id));
+  const index = getBundleIndex(bundle);
+  const artifactCandidates = candidateArtifacts(bundle, index, input);
+  const eventCandidates = candidateEvents(bundle, index, input);
   const artifacts: FrontierInspectArtifact[] = [];
   const events: FrontierInspectEvent[] = [];
 
-  for (let i = 0; i < bundle.artifacts.length; i++) {
-    const artifact = bundle.artifacts[i];
+  for (let i = 0; i < artifactCandidates.length; i++) {
+    const artifact = artifactCandidates[i];
     if (matchesArtifact(artifact, input, registryEntryIds, registryRecordIds)) {
       artifacts[artifacts.length] = cloneArtifact(artifact);
       if (artifacts.length >= limit) break;
     }
   }
-  for (let i = 0; i < bundle.events.length; i++) {
-    const event = bundle.events[i];
+  for (let i = 0; i < eventCandidates.length; i++) {
+    const event = eventCandidates[i];
     if (matchesEvent(event, input, registryEntryIds, registryRecordIds)) {
       events[events.length] = cloneEvent(event);
       if (events.length >= limit) break;
@@ -628,7 +1050,7 @@ export function createInspectReport(
 
 export function createInspectFeatureMap(bundle: FrontierInspectBundle): FrontierInspectFeatureMap {
   const summaries = new Map<string, MutableFeatureSummary>();
-  const registry = frontierRegistryIndex(bundle.graph);
+  const registry = getBundleIndex(bundle).registry;
   for (const feature of registry.features) {
     const summary = getFeatureSummary(summaries, feature.id);
     for (const entry of feature.entries) addUnique(summary.entries, entry);
@@ -672,7 +1094,7 @@ export function createInspectFeatureMap(bundle: FrontierInspectBundle): Frontier
     for (const path of artifact.paths) addUnique(summary.paths, path);
     for (const resource of artifact.resources) addUnique(summary.resources, resource);
     if (artifact.kind === 'test') addUnique(summary.tests, artifact.id);
-    if (artifact.kind === 'benchmark') addUnique(summary.benchmarks, artifact.id);
+    if (artifact.kind === 'benchmark' || artifact.kind === 'benchmark-report') addUnique(summary.benchmarks, artifact.id);
   }
   for (const event of bundle.events) {
     const feature = event.feature;
@@ -1108,6 +1530,188 @@ function graphFromPlaywrightTimeline(
   return frontierRegistryMergeGraphs(graphs);
 }
 
+function routeEntriesFromManifest(
+  manifest: FrontierInspectRouteManifestLike,
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package' | 'sourcePackage' | 'tags'>
+): FrontierRegistryEntry[] {
+  const entries: FrontierRegistryEntry[] = [];
+  for (const route of manifest.routes ?? []) {
+    entries[entries.length] = {
+      id: String(route.id),
+      kind: route.kind ?? 'route',
+      description: route.title,
+      package: route.package ?? options.package ?? options.sourcePackage,
+      feature: route.feature ?? options.feature,
+      owner: route.owner,
+      source: normalizeSourceLike(route.source),
+      reads: route.reads,
+      writes: route.writes,
+      dependsOn: route.parentId === undefined ? undefined : [String(route.parentId)],
+      touches: uniqueStrings([route.resource, route.pattern, route.id].filter(isString)),
+      handles: descriptorsToStrings(route.guards),
+      produces: descriptorsToStrings(route.loads),
+      emits: route.emits,
+      tags: uniqueStrings((options.tags ?? []).concat(route.tags ?? [])),
+      metadata: toJsonObject(route.metadata)
+    };
+  }
+  for (let i = 0; i < (manifest.transitions ?? []).length; i++) {
+    const transition = (manifest.transitions ?? [])[i];
+    entries[entries.length] = {
+      id: transition.id ?? 'transition:' + i + ':' + transition.to,
+      kind: transition.kind ?? 'transition',
+      package: options.package ?? options.sourcePackage,
+      feature: options.feature,
+      reads: transition.reads,
+      writes: transition.writes,
+      dependsOn: transition.from === undefined
+        ? undefined
+        : Array.isArray(transition.from) ? transition.from.map(String) : [String(transition.from)],
+      touches: [String(transition.to)],
+      handles: descriptorsToStrings(transition.guards),
+      produces: descriptorsToStrings(transition.loads),
+      emits: transition.emits,
+      tags: uniqueStrings((options.tags ?? []).concat(transition.tags ?? [])),
+      metadata: toJsonObject(transition.metadata)
+    };
+  }
+  return entries;
+}
+
+function resourcesFromRouteManifest(manifest: FrontierInspectRouteManifestLike): string[] {
+  const values: string[] = [];
+  for (const route of manifest.routes ?? []) {
+    if (route.resource !== undefined) addUnique(values, route.resource);
+    if (route.pattern !== undefined) addUnique(values, route.pattern);
+    addUnique(values, route.id);
+    for (const load of route.loads ?? []) {
+      const resource = descriptorResource(load);
+      if (resource !== undefined) addUnique(values, resource);
+    }
+  }
+  for (const transition of manifest.transitions ?? []) {
+    addUnique(values, transition.to);
+    for (const from of Array.isArray(transition.from) ? transition.from : transition.from === undefined ? [] : [transition.from]) {
+      addUnique(values, String(from));
+    }
+    for (const load of transition.loads ?? []) {
+      const resource = descriptorResource(load);
+      if (resource !== undefined) addUnique(values, resource);
+    }
+  }
+  return values.sort();
+}
+
+function pathsFromRouteManifest(manifest: FrontierInspectRouteManifestLike): string[] {
+  const values: string[] = [];
+  for (const route of manifest.routes ?? []) {
+    for (const path of route.reads ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const path of route.writes ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const guard of route.guards ?? []) for (const path of descriptorReads(guard)) addUnique(values, normalizeFrontierRegistryPath(path));
+  }
+  for (const transition of manifest.transitions ?? []) {
+    for (const path of transition.reads ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const path of transition.writes ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const guard of transition.guards ?? []) for (const path of descriptorReads(guard)) addUnique(values, normalizeFrontierRegistryPath(path));
+  }
+  return values.sort();
+}
+
+function filesFromRouteManifest(manifest: FrontierInspectRouteManifestLike): string[] {
+  const values: string[] = [];
+  for (const route of manifest.routes ?? []) for (const file of sourceLikeFiles(route.source)) addUnique(values, file);
+  return values.sort();
+}
+
+function eventsFromDiagnostics(
+  diagnostics: readonly FrontierInspectDiagnosticLike[],
+  source: string,
+  options: Pick<FrontierInspectArtifactInput, 'sourcePackage' | 'feature' | 'package' | 'tags'>
+): FrontierInspectEventInput[] {
+  return diagnostics.map((diagnostic, index) => ({
+    id: source + ':diagnostic:' + index + ':' + String(diagnostic.code ?? diagnostic.stepId ?? diagnostic.routeId ?? diagnostic.transitionId ?? 'issue'),
+    type: source + '.diagnostic',
+    label: diagnostic.message,
+    source,
+    sourcePackage: options.sourcePackage,
+    feature: options.feature,
+    package: options.package ?? options.sourcePackage,
+    tags: options.tags,
+    path: diagnostic.path,
+    routeId: diagnostic.routeId,
+    severity: diagnostic.severity ?? 'warning',
+    status: diagnostic.severity === 'error' ? 'error' : 'pending',
+    value: toJsonValue(diagnostic)
+  }));
+}
+
+function eventFromLogRecord(
+  record: FrontierInspectLogRecordLike,
+  index: number,
+  options: Pick<FrontierInspectArtifactInput, 'sourcePackage' | 'feature' | 'package' | 'tags'>
+): FrontierInspectEvent {
+  const attributes = record.attributes ?? {};
+  const resource = record.resource ?? {};
+  const telemetry = record.telemetry ?? {};
+  const level = String(record.level ?? 'info');
+  return normalizeEvent({
+    id: 'log:' + (record.traceId ?? record.spanId ?? record.name ?? index) + ':' + index,
+    type: record.name ?? 'log',
+    label: record.message,
+    timestamp: record.time,
+    source: 'logging',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-logging',
+    entryId: stringField(attributes, telemetry, resource, ['entryId', 'entry.id', 'frontier.entry']),
+    recordId: stringField(attributes, telemetry, resource, ['recordId', 'record.id', 'frontier.record']),
+    feature: stringField(attributes, telemetry, resource, ['feature', 'frontier.feature']) ?? options.feature,
+    package: stringField(attributes, telemetry, resource, ['package', 'frontier.package']) ?? options.package ?? options.sourcePackage,
+    tags: uniqueStrings((options.tags ?? []).concat(level, record.scope ?? '', stringArrayField(attributes, 'tags'))),
+    file: stringField(attributes, telemetry, resource, ['file', 'source.file']),
+    path: stringField(attributes, telemetry, resource, ['path', 'state.path']),
+    resource: stringField(attributes, telemetry, resource, ['resource', 'route', 'url']),
+    routeId: stringField(attributes, telemetry, resource, ['routeId', 'route.id']),
+    severity: logLevelToSeverity(level),
+    status: level === 'error' || level === 'fatal' ? 'error' : 'ok',
+    value: toJsonValue(record),
+    metadata: toJsonObject({
+      traceId: record.traceId,
+      spanId: record.spanId,
+      parentSpanId: record.parentSpanId,
+      durationMs: record.durationMs
+    })
+  }, index);
+}
+
+function eventFromEventLogRecord(
+  record: FrontierInspectEventLogRecordLike,
+  index: number,
+  options: Pick<FrontierInspectArtifactInput, 'sourcePackage' | 'feature' | 'package' | 'tags'>
+): FrontierInspectEvent {
+  const headers = record.headers ?? {};
+  const value = isRecord(record.value) ? record.value : {};
+  const metadata = isRecord(value.metadata) ? value.metadata : {};
+  const eventType = stringField(value, headers, metadata, ['kind', 'type']) ?? 'event-log-record';
+  return normalizeEvent({
+    id: 'event-log:' + String(record.offset ?? index),
+    type: eventType,
+    label: record.key,
+    timestamp: record.timestamp,
+    source: 'event-log',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-event-log',
+    entryId: stringField(headers, value, metadata, ['entryId', 'entry.id']),
+    recordId: stringField(headers, value, metadata, ['recordId', 'record.id']),
+    feature: stringField(headers, value, metadata, ['feature']) ?? options.feature,
+    package: stringField(headers, value, metadata, ['package']) ?? options.package ?? options.sourcePackage,
+    tags: uniqueStrings((options.tags ?? []).concat('event-log', stringArrayField(headers, 'tags'))),
+    path: stringField(headers, value, metadata, ['path']),
+    resource: stringField(headers, value, metadata, ['resource', 'route']),
+    severity: stringField(headers, value, metadata, ['severity']),
+    status: stringField(headers, value, metadata, ['status']) ?? 'ok',
+    value: toJsonValue(record.value),
+    metadata: toJsonObject({ offset: record.offset, key: record.key, headers: record.headers })
+  }, index);
+}
+
 function registryQueryFromInspectQuery(input: FrontierInspectQueryInput): FrontierRegistryQueryInput {
   return {
     ids: unionArray(input.entryIds, input.ids),
@@ -1349,23 +1953,141 @@ function getBundleIndex(bundle: FrontierInspectBundle): FrontierInspectBundleInd
     registry: frontierRegistryIndex(bundle.graph),
     artifactsById: new Map(),
     eventsById: new Map(),
+    artifactOrder: new Map(),
+    eventOrder: new Map(),
+    artifactIdsByKind: new Map(),
+    artifactIdsBySourcePackage: new Map(),
+    artifactIdsByPackage: new Map(),
+    artifactIdsByFeature: new Map(),
+    artifactIdsByTag: new Map(),
+    artifactIdsByFile: new Map(),
+    artifactIdsByPath: new Map(),
+    artifactIdsByResource: new Map(),
     artifactIdsByEntryId: new Map(),
     eventIdsByEntryId: new Map(),
     artifactIdsByRecordId: new Map(),
-    eventIdsByRecordId: new Map()
+    eventIdsByRecordId: new Map(),
+    eventIdsBySourcePackage: new Map(),
+    eventIdsByPackage: new Map(),
+    eventIdsByFeature: new Map(),
+    eventIdsByTag: new Map(),
+    eventIdsByFile: new Map(),
+    eventIdsByPath: new Map(),
+    eventIdsByResource: new Map(),
+    eventIdsByStatus: new Map(),
+    eventIdsBySeverity: new Map()
   };
-  for (const artifact of bundle.artifacts) {
+  for (let i = 0; i < bundle.artifacts.length; i++) {
+    const artifact = bundle.artifacts[i];
     index.artifactsById.set(artifact.id, artifact);
+    index.artifactOrder.set(artifact.id, i);
+    addMapSet(index.artifactIdsByKind, artifact.kind, artifact.id);
+    if (artifact.sourcePackage !== undefined) addMapSet(index.artifactIdsBySourcePackage, artifact.sourcePackage, artifact.id);
+    if (artifact.package !== undefined) addMapSet(index.artifactIdsByPackage, artifact.package, artifact.id);
+    if (artifact.feature !== undefined) addMapSet(index.artifactIdsByFeature, artifact.feature, artifact.id);
+    for (const tag of artifact.tags) addMapSet(index.artifactIdsByTag, tag, artifact.id);
+    for (const file of artifact.files) addMapSet(index.artifactIdsByFile, file, artifact.id);
+    for (const path of artifact.paths) addMapSet(index.artifactIdsByPath, path, artifact.id);
+    for (const resource of artifact.resources) addMapSet(index.artifactIdsByResource, resource, artifact.id);
     for (const entryId of artifact.entryIds) addMapSet(index.artifactIdsByEntryId, entryId, artifact.id);
     for (const recordId of artifact.recordIds) addMapSet(index.artifactIdsByRecordId, recordId, artifact.id);
   }
-  for (const event of bundle.events) {
+  for (let i = 0; i < bundle.events.length; i++) {
+    const event = bundle.events[i];
     index.eventsById.set(event.id, event);
+    index.eventOrder.set(event.id, i);
+    if (event.sourcePackage !== undefined) addMapSet(index.eventIdsBySourcePackage, event.sourcePackage, event.id);
+    if (event.package !== undefined) addMapSet(index.eventIdsByPackage, event.package, event.id);
+    if (event.feature !== undefined) addMapSet(index.eventIdsByFeature, event.feature, event.id);
+    for (const tag of event.tags) addMapSet(index.eventIdsByTag, tag, event.id);
+    if (event.file !== undefined) addMapSet(index.eventIdsByFile, event.file, event.id);
+    if (event.path !== undefined) addMapSet(index.eventIdsByPath, event.path, event.id);
+    if (event.resource !== undefined) addMapSet(index.eventIdsByResource, event.resource, event.id);
+    if (event.status !== undefined) addMapSet(index.eventIdsByStatus, event.status, event.id);
+    if (event.severity !== undefined) addMapSet(index.eventIdsBySeverity, event.severity, event.id);
     if (event.entryId !== undefined) addMapSet(index.eventIdsByEntryId, event.entryId, event.id);
     if (event.recordId !== undefined) addMapSet(index.eventIdsByRecordId, event.recordId, event.id);
   }
   bundleIndexes.set(bundle, index);
   return index;
+}
+
+function candidateArtifacts(
+  bundle: FrontierInspectBundle,
+  index: FrontierInspectBundleIndex,
+  input: FrontierInspectQueryInput
+): FrontierInspectArtifact[] {
+  let ids: Set<string> | undefined;
+  ids = intersectCandidate(ids, idsFromExact(index.artifactsById, unionArray(input.artifactIds, input.ids)));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByKind, input.artifactKinds));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsBySourcePackage, input.sourcePackages));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByPackage, input.packages));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByFeature, input.features));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByTag, input.tags));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByFile, input.files));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByPath, input.paths?.map((path) => normalizeFrontierRegistryPath(path))));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByResource, input.resources));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByEntryId, input.entryIds));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByRecordId, input.recordIds));
+  if (ids === undefined) return bundle.artifacts;
+  return materializeCandidates(ids, index.artifactsById, index.artifactOrder);
+}
+
+function candidateEvents(
+  bundle: FrontierInspectBundle,
+  index: FrontierInspectBundleIndex,
+  input: FrontierInspectQueryInput
+): FrontierInspectEvent[] {
+  let ids: Set<string> | undefined;
+  ids = intersectCandidate(ids, idsFromExact(index.eventsById, unionArray(input.eventIds, input.ids)));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsBySourcePackage, input.sourcePackages));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByPackage, input.packages));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByFeature, input.features));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByTag, input.tags));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByFile, input.files));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByPath, input.paths?.map((path) => normalizeFrontierRegistryPath(path))));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByResource, input.resources));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByEntryId, input.entryIds));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByRecordId, input.recordIds));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByStatus, input.statuses));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsBySeverity, input.severities));
+  if (ids === undefined) return bundle.events;
+  return materializeCandidates(ids, index.eventsById, index.eventOrder);
+}
+
+function idsFromExact<T>(map: Map<string, T>, values: readonly string[] | undefined): Set<string> | undefined {
+  if (values === undefined) return undefined;
+  const out = new Set<string>();
+  for (const value of values) if (map.has(String(value))) out.add(String(value));
+  return out;
+}
+
+function idsFromMap(map: Map<string, Set<string>>, values: readonly string[] | undefined): Set<string> | undefined {
+  if (values === undefined) return undefined;
+  const out = new Set<string>();
+  for (const value of values) {
+    const bucket = map.get(String(value));
+    if (bucket !== undefined) for (const id of bucket) out.add(id);
+  }
+  return out;
+}
+
+function intersectCandidate(left: Set<string> | undefined, right: Set<string> | undefined): Set<string> | undefined {
+  if (right === undefined) return left;
+  if (left === undefined) return right;
+  const out = new Set<string>();
+  for (const value of left) if (right.has(value)) out.add(value);
+  return out;
+}
+
+function materializeCandidates<T>(ids: Set<string>, map: Map<string, T>, order: Map<string, number>): T[] {
+  const rows: Array<{ id: string; value: T }> = [];
+  for (const id of ids) {
+    const value = map.get(id);
+    if (value !== undefined) rows[rows.length] = { id, value };
+  }
+  rows.sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  return rows.map((row) => row.value);
 }
 
 function summarizeParts(
@@ -1672,6 +2394,12 @@ function cloneJsonObject(value: JsonObject): JsonObject {
   return cloneJsonValue(value);
 }
 
+function toJsonObject(value: unknown): JsonObject | undefined {
+  if (value === undefined) return undefined;
+  const converted = toJsonValue(value);
+  return isRecord(converted) && !Array.isArray(converted) ? converted as JsonObject : undefined;
+}
+
 function toJsonValue(value: unknown): JsonValue {
   const converted = sanitizeUnknownJson(value, 10, 500);
   return converted === undefined ? null : converted;
@@ -1751,6 +2479,55 @@ function normalizeNonEmpty(value: string, label: string): string {
   return normalized;
 }
 
+function normalizeSourceLike(
+  source: FrontierInspectSourceLike | readonly FrontierInspectSourceLike[] | undefined
+): FrontierRegistryEntry['source'] | undefined {
+  if (source === undefined) return undefined;
+  const sources = Array.isArray(source) ? source : [source];
+  const normalized = sources
+    .filter((entry) => entry !== undefined && typeof entry.file === 'string' && entry.file.length !== 0)
+    .map((entry) => ({
+      file: entry.file,
+      line: entry.line,
+      column: entry.column,
+      symbol: entry.symbol,
+      exportName: entry.exportName,
+      package: entry.package
+    }));
+  if (normalized.length === 0) return undefined;
+  return Array.isArray(source) ? normalized : normalized[0];
+}
+
+function sourceLikeFiles(source: FrontierInspectSourceLike | readonly FrontierInspectSourceLike[] | undefined): string[] {
+  if (source === undefined) return [];
+  const sources = Array.isArray(source) ? source : [source];
+  return uniqueStrings(sources.map((entry) => entry.file).filter(isString));
+}
+
+function descriptorsToStrings(values: readonly (string | FrontierInspectDescriptorLike)[] | undefined): string[] | undefined {
+  if (values === undefined) return undefined;
+  return uniqueStrings(values.map((value) => typeof value === 'string' ? value : String(value.id ?? value.resource ?? value.kind ?? 'descriptor')));
+}
+
+function descriptorResource(value: string | FrontierInspectDescriptorLike): string | undefined {
+  return typeof value === 'string' ? value : value.resource ?? value.id;
+}
+
+function descriptorReads(value: string | FrontierInspectDescriptorLike): readonly FrontierRegistryPath[] {
+  return typeof value === 'string' ? [] : value.reads ?? [];
+}
+
+function singletonOrUndefined(values: readonly string[] | undefined): string | undefined {
+  return values !== undefined && values.length === 1 ? values[0] : undefined;
+}
+
+function mergeMetadata(left: JsonObject | undefined, right: unknown): JsonObject | undefined {
+  const converted = toJsonObject(right);
+  if (left === undefined) return converted;
+  if (converted === undefined) return left;
+  return { ...converted, ...left };
+}
+
 function uniqueStrings(values: readonly string[]): string[] {
   const out: string[] = [];
   for (let i = 0; i < values.length; i++) addUnique(out, String(values[i]));
@@ -1786,6 +2563,52 @@ function addMapSet(map: Map<string, Set<string>>, key: string, value: string): v
   const existing = map.get(key);
   if (existing === undefined) map.set(key, new Set([value]));
   else existing.add(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string' && value.length !== 0;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringField(
+  first: Record<string, unknown>,
+  second: Record<string, unknown>,
+  third: Record<string, unknown>,
+  keys: readonly string[]
+): string | undefined {
+  for (const key of keys) {
+    const value = fieldValue(first, key) ?? fieldValue(second, key) ?? fieldValue(third, key);
+    if (typeof value === 'string' && value.length !== 0) return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return undefined;
+}
+
+function fieldValue(record: Record<string, unknown>, key: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(record, key)) return record[key];
+  const parts = key.split('.');
+  let current: unknown = record;
+  for (const part of parts) {
+    if (!isRecord(current)) return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+function stringArrayField(record: Record<string, unknown>, key: string): string[] {
+  const value = fieldValue(record, key);
+  if (!Array.isArray(value)) return [];
+  return value.map(String).filter(Boolean);
+}
+
+function logLevelToSeverity(level: string): FrontierInspectEventSeverity {
+  if (level === 'fatal' || level === 'error') return 'error';
+  if (level === 'warn') return 'warning';
+  if (level === 'trace' || level === 'debug') return 'debug';
+  return 'info';
 }
 
 function normalizeLimit(value: number | undefined): number {
