@@ -208,6 +208,7 @@ import {
   createInspectArtifactFromMigrationReport,
   createInspectArtifactFromRouteImpact,
   createInspectArtifactFromRouteManifest,
+  createInspectArtifactFromSemanticMergeEvidence,
   createInspectReport,
   queryInspectBundle,
   traceInspectImpact
@@ -267,6 +268,24 @@ const benchmarkArtifact = createInspectArtifactFromBenchmarkReport({
   rows: [{ fixture: 'query-todos', name: 'query todos', medianUs: 40, p95Us: 75 }]
 }, { id: 'todos.bench', feature: 'todos' });
 
+const semanticMergeArtifact = createInspectArtifactFromSemanticMergeEvidence({
+  mergeId: 'merge:todos-save',
+  changedPaths: ['entities.todos'],
+  changedFiles: ['src/todos/save.ts'],
+  semanticRegions: [
+    {
+      id: 'region:todo-save',
+      kind: 'function',
+      file: 'src/todos/save.ts',
+      path: 'entities.todos',
+      symbol: 'saveTodo'
+    }
+  ],
+  decision: 'accepted',
+  status: 'changed',
+  proofLinks: [{ id: 'proof:smoke', href: 'agent-runs/todos/evidence.json' }]
+}, { id: 'todos.semantic-merge', feature: 'todos' });
+
 const bundle = createInspectBundle({
   graph: {
     entries: [
@@ -289,6 +308,7 @@ const bundle = createInspectBundle({
     telemetryArtifact,
     eventLogArtifact,
     benchmarkArtifact,
+    semanticMergeArtifact,
     {
       id: 'pw:todo-save',
       kind: 'timeline',
@@ -325,6 +345,7 @@ const report = createInspectReport(bundle, {
 - Event: a normalized timestamped fact with optional entry, record, feature, package, file, path, resource, selector, status, and value metadata.
 - Feature map: an AI-friendly grouping of entries, records, artifacts, events, paths, files, resources, tests, and benchmarks by feature.
 - Proof: a stable non-cryptographic fingerprint over graph, artifact, event, and summary ids for replay comparisons.
+- Semantic merge evidence: changed paths, source regions, coordinator decisions/status, and proof links normalized into regular inspect artifacts, registry entries, records, and JSONL events.
 
 ## Structural Adapters
 
@@ -334,6 +355,7 @@ The package includes structural adapters for the package family surfaces that ne
 - Migrations: dry-run or import reports become migration artifacts plus pending warning/error events.
 - Logging and event log: structured records become normalized timeline events with feature, package, entry, record, file, path, resource, and route metadata extracted from common attribute shapes.
 - Benchmarks: package benchmark rows become benchmark artifacts and feature-map benchmark entries.
+- Semantic merge: semantic sidecars or merge admission records become structural evidence without importing `frontier-swarm-codex`; callers pass plain changed paths, semantic regions, decision/status, and proof links.
 - Playwright, DOM, tests, and other packages can continue passing plain artifacts and events directly when they already have normalized evidence.
 
 ## Benchmarks

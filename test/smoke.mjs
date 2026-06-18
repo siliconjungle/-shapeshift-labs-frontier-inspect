@@ -6,6 +6,7 @@ import {
   createInspectArtifactFromMigrationReport,
   createInspectArtifactFromRouteImpact,
   createInspectArtifactFromRouteManifest,
+  createInspectArtifactFromSemanticMergeEvidence,
   createInspectArtifactsFromPlaywrightTimeline,
   createInspectBundle,
   createInspectFeatureMap,
@@ -114,6 +115,70 @@ const benchmark = createInspectArtifactFromBenchmarkReport({
   package: '@app/todos',
   rows: [{ fixture: 'todo-save', medianUs: 12, p95Us: 20 }]
 }, { id: 'artifact:benchmark', feature: 'todos' });
+
+const semanticMerge = createInspectArtifactFromSemanticMergeEvidence({
+  id: 'inspect-semantic-merge-evidence',
+  mergeId: 'merge:inspect-semantic',
+  changedPaths: ['frontierInspect/semanticMergeEvidence'],
+  changedFiles: ['packages/frontier-inspect/src/index.ts'],
+  semanticRegions: [
+    {
+      id: 'region:semantic-merge-helper',
+      kind: 'function',
+      file: 'packages/frontier-inspect/src/index.ts',
+      path: ['frontierInspect', 'semanticMergeEvidence'],
+      symbol: 'createInspectArtifactFromSemanticMergeEvidence',
+      startLine: 1,
+      endLine: 1,
+      writes: ['frontierInspect/semanticMergeEvidence'],
+      tags: ['helper']
+    }
+  ],
+  decision: 'accepted',
+  status: 'changed',
+  proofLinks: [
+    {
+      id: 'proof:frontier-inspect-test',
+      kind: 'test-log',
+      href: 'agent-runs/run11/evidence/frontier-inspect-test.log',
+      hash: 'abc123',
+      status: 'ok'
+    }
+  ]
+}, {
+  id: 'artifact:semantic-merge',
+  feature: 'inspect',
+  package: '@shapeshift-labs/frontier-inspect',
+  tags: ['semantic']
+});
+
+assert.strictEqual(semanticMerge.kind, 'semantic-merge-evidence');
+assert.ok(semanticMerge.paths.includes('/frontierInspect/semanticMergeEvidence'));
+assert.ok(semanticMerge.files.includes('packages/frontier-inspect/src/index.ts'));
+assert.strictEqual(semanticMerge.data.decision, 'accepted');
+assert.strictEqual(semanticMerge.data.status, 'changed');
+assert.strictEqual(semanticMerge.data.semanticRegions[0].symbol, 'createInspectArtifactFromSemanticMergeEvidence');
+assert.strictEqual(semanticMerge.data.proofLinks[0].href, 'agent-runs/run11/evidence/frontier-inspect-test.log');
+
+const semanticBundle = createInspectBundle({
+  id: 'inspect:semantic-merge',
+  artifacts: [semanticMerge]
+});
+const semanticByStatus = queryInspectBundle(semanticBundle, { statuses: ['changed'] });
+assert.ok(semanticByStatus.events.some((event) => event.type === 'semantic-merge'));
+assert.ok(semanticByStatus.events.some((event) => event.type === 'semantic-region'));
+const semanticByProof = queryInspectBundle(semanticBundle, { resources: ['agent-runs/run11/evidence/frontier-inspect-test.log'] });
+assert.ok(semanticByProof.events.some((event) => event.type === 'semantic-merge.proof'));
+const semanticImpact = traceInspectImpact(semanticBundle, { paths: ['frontierInspect/semanticMergeEvidence'] });
+assert.ok(semanticImpact.registry.entries.some((entry) => entry.id === 'region:semantic-merge-helper'));
+assert.ok(semanticImpact.files.includes('packages/frontier-inspect/src/index.ts'));
+const semanticDecoded = decodeInspectJsonl(encodeInspectJsonl(semanticBundle));
+const semanticDecodedArtifact = semanticDecoded.artifacts.find((artifact) => artifact.id === 'artifact:semantic-merge');
+assert.ok(semanticDecodedArtifact);
+assert.deepStrictEqual(semanticDecodedArtifact.data.changedPaths, ['/frontierInspect/semanticMergeEvidence']);
+assert.strictEqual(semanticDecodedArtifact.data.semanticRegions[0].id, 'region:semantic-merge-helper');
+assert.strictEqual(semanticDecodedArtifact.data.proofLinks[0].hash, 'abc123');
+assert.ok(semanticDecoded.events.some((event) => event.status === 'changed'));
 
 const bundle = createInspectBundle({
   id: 'inspect:smoke',

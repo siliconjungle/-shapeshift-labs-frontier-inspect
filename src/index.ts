@@ -41,6 +41,8 @@ export const FRONTIER_INSPECT_PROOF_KIND = 'frontier.inspect.proof';
 export const FRONTIER_INSPECT_PROOF_VERSION = 1;
 export const FRONTIER_INSPECT_JSONL_KIND = 'frontier.inspect.jsonl';
 export const FRONTIER_INSPECT_JSONL_VERSION = 1;
+export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND = 'frontier.inspect.semantic-merge-evidence';
+export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION = 1;
 
 export type FrontierInspectArtifactKind =
   | 'registry-graph'
@@ -56,6 +58,7 @@ export type FrontierInspectArtifactKind =
   | 'benchmark'
   | 'benchmark-report'
   | 'test'
+  | 'semantic-merge-evidence'
   | 'telemetry'
   | 'log-records'
   | string;
@@ -552,6 +555,109 @@ export interface FrontierInspectBenchmarkRowLike {
   [key: string]: unknown;
 }
 
+export type FrontierInspectSemanticMergeDecision =
+  | 'accepted'
+  | 'rejected'
+  | 'needs-review'
+  | 'conflict'
+  | 'merged'
+  | string;
+
+export type FrontierInspectSemanticMergeStatus = 'ok' | 'changed' | 'pending' | 'error' | string;
+
+export interface FrontierInspectSemanticMergeEvidenceLike {
+  kind?: string;
+  version?: number;
+  id?: string;
+  generatedAt?: FrontierInspectTimestamp;
+  mergeId?: string;
+  bundleId?: string;
+  source?: string;
+  sourcePackage?: string;
+  feature?: string;
+  package?: string;
+  summary?: string;
+  changedPaths?: readonly FrontierRegistryPath[];
+  paths?: readonly FrontierRegistryPath[];
+  changedFiles?: readonly string[];
+  files?: readonly string[];
+  semanticRegions?: readonly FrontierInspectSemanticRegionLike[];
+  regions?: readonly FrontierInspectSemanticRegionLike[];
+  decision?: FrontierInspectSemanticMergeDecision;
+  status?: FrontierInspectSemanticMergeStatus;
+  proofLinks?: readonly FrontierInspectProofLinkLike[];
+  proofs?: readonly FrontierInspectProofLinkLike[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectSemanticRegionLike {
+  id?: string;
+  kind?: string;
+  label?: string;
+  file?: string;
+  path?: FrontierRegistryPath;
+  symbol?: string;
+  startLine?: number;
+  startColumn?: number;
+  endLine?: number;
+  endColumn?: number;
+  feature?: string;
+  package?: string;
+  owner?: string;
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectSemanticRegion {
+  id: string;
+  kind: string;
+  label?: string;
+  file?: string;
+  path?: string;
+  symbol?: string;
+  startLine?: number;
+  startColumn?: number;
+  endLine?: number;
+  endColumn?: number;
+  feature?: string;
+  package?: string;
+  owner?: string;
+  reads: string[];
+  writes: string[];
+  tags: string[];
+  metadata?: JsonObject;
+}
+
+export interface FrontierInspectProofLinkLike {
+  id?: string;
+  kind?: string;
+  label?: string;
+  href?: string;
+  uri?: string;
+  url?: string;
+  path?: string;
+  hash?: string;
+  status?: FrontierInspectSemanticMergeStatus;
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectProofLink {
+  id: string;
+  kind?: string;
+  label?: string;
+  href?: string;
+  path?: string;
+  hash?: string;
+  status?: string;
+  metadata?: JsonObject;
+}
+
 export interface FrontierInspectSourceLike {
   file: string;
   line?: number;
@@ -887,6 +993,128 @@ export function createInspectArtifactFromBenchmarkReport(
       rounds: report.rounds,
       rowCount: rows.length
     })
+  }, 0);
+}
+
+export function createInspectArtifactFromSemanticMergeEvidence(
+  evidence: FrontierInspectSemanticMergeEvidenceLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const sourcePackage = options.sourcePackage ?? evidence.sourcePackage ?? '@shapeshift-labs/frontier-inspect';
+  const evidenceId = normalizeNonEmpty(String(evidence.id ?? evidence.mergeId ?? options.id ?? 'semantic-merge-evidence'), 'semantic merge evidence id');
+  const mergeEntryId = 'semantic-merge:' + evidenceId;
+  const mergeRecordId = 'semantic-merge-record:' + evidenceId;
+  const decision = evidence.decision === undefined ? undefined : String(evidence.decision);
+  const status = String(evidence.status ?? 'pending');
+  const regions = normalizeSemanticMergeRegions(evidence.semanticRegions ?? evidence.regions ?? [], evidence, options);
+  const proofLinks = normalizeSemanticMergeProofLinks(evidence.proofLinks ?? evidence.proofs ?? []);
+  const changedPaths = semanticMergeChangedPaths(evidence, regions);
+  const changedFiles = semanticMergeFiles(evidence, regions);
+  const proofResources = proofLinks.map(semanticMergeProofResource).filter(isString);
+  const resourceId = 'semantic-merge:' + evidenceId;
+  const tags = uniqueStrings((options.tags ?? []).concat(evidence.tags ?? [], ['semantic-merge']));
+
+  const entries: FrontierRegistryEntry[] = [{
+    id: mergeEntryId,
+    kind: 'semantic-merge-evidence',
+    description: options.summary ?? evidence.summary,
+    package: options.package ?? evidence.package ?? sourcePackage,
+    feature: options.feature ?? evidence.feature,
+    source: changedFiles.length === 0 ? undefined : changedFiles.map((file) => ({ file })),
+    writes: changedPaths.length === 0 ? undefined : changedPaths,
+    touches: uniqueStrings([resourceId].concat(proofResources)),
+    tags: uniqueStrings(tags.concat(decision ?? '', status)),
+    metadata: toJsonObject({
+      bundleId: evidence.bundleId,
+      decision,
+      mergeId: evidence.mergeId,
+      proofLinks,
+      regionIds: regions.map((region) => region.id),
+      status
+    })
+  }];
+  for (let i = 0; i < regions.length; i++) {
+    entries[entries.length] = semanticMergeRegionEntry(regions[i], mergeEntryId, evidence, options, sourcePackage);
+  }
+
+  const records: FrontierRegistryRecord[] = [{
+    id: mergeRecordId,
+    entryId: mergeEntryId,
+    kind: 'semantic-merge-evidence',
+    status,
+    writes: changedPaths.length === 0 ? undefined : changedPaths,
+    affected: regions.map((region) => 'entry:' + region.id),
+    metadata: toJsonObject({
+      decision,
+      proofLinks,
+      status
+    })
+  }];
+  for (let i = 0; i < regions.length; i++) {
+    const region = regions[i];
+    const writes = semanticRegionWrites(region);
+    records[records.length] = {
+      id: 'semantic-region-record:' + region.id,
+      entryId: region.id,
+      kind: region.kind,
+      status,
+      reads: region.reads.length === 0 ? undefined : region.reads,
+      writes: writes.length === 0 ? undefined : writes,
+      affected: proofResources,
+      metadata: toJsonObject({
+        decision,
+        status
+      })
+    };
+  }
+
+  const events = semanticMergeEvents(evidence, {
+    changedFiles,
+    changedPaths,
+    decision,
+    mergeEntryId,
+    mergeRecordId,
+    proofLinks,
+    regions,
+    resourceId,
+    sourcePackage,
+    status,
+    tags,
+    options
+  });
+
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:semantic-merge:' + evidenceId,
+    kind: 'semantic-merge-evidence',
+    sourcePackage,
+    feature: options.feature ?? evidence.feature,
+    package: options.package ?? evidence.package ?? sourcePackage,
+    summary: options.summary ?? evidence.summary,
+    timestamp: options.timestamp ?? evidence.generatedAt,
+    tags,
+    files: unionArray(options.files, changedFiles),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), changedPaths),
+    resources: unionArray(options.resources, [resourceId].concat(proofResources)),
+    graph: { entries, records },
+    events,
+    data: toJsonValue({
+      kind: evidence.kind ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND,
+      version: evidence.version ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION,
+      id: evidence.id,
+      mergeId: evidence.mergeId,
+      bundleId: evidence.bundleId,
+      source: evidence.source,
+      decision,
+      status,
+      changedPaths,
+      changedFiles,
+      semanticRegions: regions,
+      proofLinks,
+      regionCount: regions.length,
+      proofLinkCount: proofLinks.length
+    }),
+    metadata: mergeMetadata(options.metadata, evidence.metadata)
   }, 0);
 }
 
@@ -1712,6 +1940,239 @@ function eventFromEventLogRecord(
   }, index);
 }
 
+interface SemanticMergeEventContext {
+  changedFiles: string[];
+  changedPaths: string[];
+  decision: string | undefined;
+  mergeEntryId: string;
+  mergeRecordId: string;
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package'>;
+  proofLinks: FrontierInspectProofLink[];
+  regions: FrontierInspectSemanticRegion[];
+  resourceId: string;
+  sourcePackage: string;
+  status: string;
+  tags: string[];
+}
+
+function normalizeSemanticMergeRegions(
+  regions: readonly FrontierInspectSemanticRegionLike[],
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'feature' | 'package'>,
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package'>
+): FrontierInspectSemanticRegion[] {
+  const out: FrontierInspectSemanticRegion[] = [];
+  for (let i = 0; i < regions.length; i++) {
+    const region = regions[i];
+    const path = region.path === undefined ? undefined : normalizeFrontierRegistryPath(region.path);
+    const normalized: FrontierInspectSemanticRegion = {
+      id: normalizeNonEmpty(String(region.id ?? semanticRegionFallbackId(region, i)), 'semantic region id'),
+      kind: String(region.kind ?? 'semantic-region'),
+      label: region.label === undefined ? undefined : String(region.label),
+      file: region.file === undefined ? undefined : String(region.file),
+      path,
+      symbol: region.symbol === undefined ? undefined : String(region.symbol),
+      startLine: normalizeOptionalNumber(region.startLine),
+      startColumn: normalizeOptionalNumber(region.startColumn),
+      endLine: normalizeOptionalNumber(region.endLine),
+      endColumn: normalizeOptionalNumber(region.endColumn),
+      feature: region.feature === undefined ? evidence.feature ?? options.feature : String(region.feature),
+      package: region.package === undefined ? evidence.package ?? options.package : String(region.package),
+      owner: region.owner === undefined ? undefined : String(region.owner),
+      reads: uniqueStrings((region.reads ?? []).map((read) => normalizeFrontierRegistryPath(read))),
+      writes: uniqueStrings((region.writes ?? []).map((write) => normalizeFrontierRegistryPath(write))),
+      tags: uniqueStrings(region.tags ?? []),
+      metadata: toJsonObject(region.metadata)
+    };
+    out[out.length] = normalized;
+  }
+  return out;
+}
+
+function semanticRegionFallbackId(region: FrontierInspectSemanticRegionLike, index: number): string {
+  const parts = [
+    region.file,
+    region.symbol,
+    region.path === undefined ? undefined : normalizeFrontierRegistryPath(region.path),
+    region.label
+  ].filter(isString);
+  return parts.length === 0 ? 'semantic-region:' + index : 'semantic-region:' + parts.join('#');
+}
+
+function normalizeSemanticMergeProofLinks(links: readonly FrontierInspectProofLinkLike[]): FrontierInspectProofLink[] {
+  const out: FrontierInspectProofLink[] = [];
+  for (let i = 0; i < links.length; i++) {
+    const link = links[i];
+    const href = firstString(link.href, link.uri, link.url);
+    const path = link.path === undefined ? undefined : String(link.path);
+    out[out.length] = {
+      id: normalizeNonEmpty(String(link.id ?? link.hash ?? href ?? path ?? 'proof:' + i), 'semantic merge proof link id'),
+      kind: link.kind === undefined ? undefined : String(link.kind),
+      label: link.label === undefined ? undefined : String(link.label),
+      href,
+      path,
+      hash: link.hash === undefined ? undefined : String(link.hash),
+      status: link.status === undefined ? undefined : String(link.status),
+      metadata: toJsonObject(link.metadata)
+    };
+  }
+  return out;
+}
+
+function semanticMergeChangedPaths(
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'changedPaths' | 'paths'>,
+  regions: readonly FrontierInspectSemanticRegion[]
+): string[] {
+  const paths: string[] = [];
+  for (const path of evidence.changedPaths ?? []) addUnique(paths, normalizeFrontierRegistryPath(path));
+  for (const path of evidence.paths ?? []) addUnique(paths, normalizeFrontierRegistryPath(path));
+  for (const region of regions) {
+    if (region.path !== undefined) addUnique(paths, region.path);
+    for (const write of region.writes) addUnique(paths, write);
+  }
+  return paths.sort();
+}
+
+function semanticMergeFiles(
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'changedFiles' | 'files'>,
+  regions: readonly FrontierInspectSemanticRegion[]
+): string[] {
+  const files: string[] = [];
+  for (const file of evidence.changedFiles ?? []) addUnique(files, String(file));
+  for (const file of evidence.files ?? []) addUnique(files, String(file));
+  for (const region of regions) if (region.file !== undefined) addUnique(files, region.file);
+  return files.sort();
+}
+
+function semanticMergeRegionEntry(
+  region: FrontierInspectSemanticRegion,
+  mergeEntryId: string,
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'feature' | 'package' | 'tags'>,
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package' | 'tags'>,
+  sourcePackage: string
+): FrontierRegistryEntry {
+  const writes = semanticRegionWrites(region);
+  return {
+    id: region.id,
+    kind: region.kind,
+    description: region.label,
+    package: region.package ?? evidence.package ?? options.package ?? sourcePackage,
+    feature: region.feature ?? evidence.feature ?? options.feature,
+    owner: region.owner,
+    source: semanticMergeRegionSource(region),
+    reads: region.reads.length === 0 ? undefined : region.reads,
+    writes: writes.length === 0 ? undefined : writes,
+    dependsOn: [mergeEntryId],
+    touches: uniqueStrings(['semantic-region:' + region.id].concat(region.symbol === undefined ? [] : ['symbol:' + region.symbol])),
+    tags: uniqueStrings((options.tags ?? []).concat(evidence.tags ?? [], region.tags, ['semantic-region'])),
+    metadata: mergeMetadata(toJsonObject({
+      endColumn: region.endColumn,
+      endLine: region.endLine,
+      path: region.path,
+      startColumn: region.startColumn,
+      startLine: region.startLine,
+      symbol: region.symbol
+    }), region.metadata)
+  };
+}
+
+function semanticMergeRegionSource(region: FrontierInspectSemanticRegion): FrontierRegistryEntry['source'] | undefined {
+  if (region.file === undefined) return undefined;
+  return normalizeSourceLike({
+    file: region.file,
+    line: region.startLine,
+    column: region.startColumn,
+    symbol: region.symbol,
+    package: region.package
+  });
+}
+
+function semanticRegionWrites(region: FrontierInspectSemanticRegion): string[] {
+  const writes = region.writes.slice();
+  if (region.path !== undefined) addUnique(writes, region.path);
+  return writes.sort();
+}
+
+function semanticMergeProofResource(link: FrontierInspectProofLink): string {
+  return link.href ?? link.path ?? link.hash ?? link.id;
+}
+
+function semanticMergeEvents(
+  evidence: FrontierInspectSemanticMergeEvidenceLike,
+  context: SemanticMergeEventContext
+): FrontierInspectEventInput[] {
+  const events: FrontierInspectEventInput[] = [{
+    id: context.resourceId + ':decision',
+    type: 'semantic-merge',
+    label: evidence.summary,
+    source: evidence.source ?? 'semantic-merge',
+    sourcePackage: context.sourcePackage,
+    entryId: context.mergeEntryId,
+    recordId: context.mergeRecordId,
+    feature: context.options.feature ?? evidence.feature,
+    package: context.options.package ?? evidence.package ?? context.sourcePackage,
+    tags: context.tags,
+    path: context.changedPaths[0],
+    resource: context.resourceId,
+    status: context.status,
+    value: toJsonValue({
+      changedFiles: context.changedFiles,
+      changedPaths: context.changedPaths,
+      decision: context.decision,
+      proofLinks: context.proofLinks,
+      semanticRegions: context.regions,
+      status: context.status
+    }),
+    metadata: toJsonObject({
+      bundleId: evidence.bundleId,
+      kind: evidence.kind ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND,
+      mergeId: evidence.mergeId,
+      version: evidence.version ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION
+    })
+  }];
+
+  for (let i = 0; i < context.regions.length; i++) {
+    const region = context.regions[i];
+    const writes = semanticRegionWrites(region);
+    events[events.length] = {
+      id: 'semantic-region:' + region.id,
+      type: 'semantic-region',
+      label: region.label,
+      source: evidence.source ?? 'semantic-merge',
+      sourcePackage: context.sourcePackage,
+      entryId: region.id,
+      recordId: 'semantic-region-record:' + region.id,
+      feature: region.feature ?? context.options.feature ?? evidence.feature,
+      package: region.package ?? context.options.package ?? evidence.package ?? context.sourcePackage,
+      tags: uniqueStrings(context.tags.concat(region.tags)),
+      file: region.file,
+      path: region.path ?? writes[0] ?? region.reads[0],
+      resource: 'semantic-region:' + region.id,
+      status: context.status,
+      value: toJsonValue(region)
+    };
+  }
+
+  for (let i = 0; i < context.proofLinks.length; i++) {
+    const proof = context.proofLinks[i];
+    events[events.length] = {
+      id: context.resourceId + ':proof:' + proof.id,
+      type: 'semantic-merge.proof',
+      label: proof.label,
+      source: evidence.source ?? 'semantic-merge',
+      sourcePackage: context.sourcePackage,
+      entryId: context.mergeEntryId,
+      recordId: context.mergeRecordId,
+      feature: context.options.feature ?? evidence.feature,
+      package: context.options.package ?? evidence.package ?? context.sourcePackage,
+      tags: context.tags,
+      resource: semanticMergeProofResource(proof),
+      status: proof.status ?? context.status,
+      value: toJsonValue(proof)
+    };
+  }
+  return events;
+}
+
 function registryQueryFromInspectQuery(input: FrontierInspectQueryInput): FrontierRegistryQueryInput {
   return {
     ids: unionArray(input.entryIds, input.ids),
@@ -2473,6 +2934,12 @@ function normalizeTimestamp(value: FrontierInspectTimestamp | undefined): number
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function normalizeOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
 function normalizeNonEmpty(value: string, label: string): string {
   const normalized = String(value);
   if (normalized.length === 0) throw new TypeError(label + ' must be a non-empty string');
@@ -2567,6 +3034,11 @@ function addMapSet(map: Map<string, Set<string>>, key: string, value: string): v
 
 function isString(value: unknown): value is string {
   return typeof value === 'string' && value.length !== 0;
+}
+
+function firstString(...values: readonly unknown[]): string | undefined {
+  for (const value of values) if (isString(value)) return value;
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
