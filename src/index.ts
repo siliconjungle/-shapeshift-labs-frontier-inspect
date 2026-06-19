@@ -43,6 +43,8 @@ export const FRONTIER_INSPECT_JSONL_KIND = 'frontier.inspect.jsonl';
 export const FRONTIER_INSPECT_JSONL_VERSION = 1;
 export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND = 'frontier.inspect.semantic-merge-evidence';
 export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION = 1;
+export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND = 'frontier.inspect.swarm-lifetime-summary';
+export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION = 1;
 
 export type FrontierInspectArtifactKind =
   | 'registry-graph'
@@ -200,6 +202,70 @@ export interface FrontierInspectSummary {
   fileCount: number;
   resourceCount: number;
   errorCount: number;
+}
+
+export interface FrontierInspectSwarmLifetimeSummary {
+  kind: typeof FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION;
+  generatedAt: number;
+  live: FrontierInspectSwarmLifetimeLiveSummary;
+  usefulOutputCount: number;
+  cost?: FrontierInspectSwarmLifetimeCostSummary;
+  sourcesScanned: FrontierInspectSwarmLifetimeSourcesScannedSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectSwarmLifetimeLiveSummary {
+  activeAgents: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  queueDepthByMeaning: FrontierInspectSwarmLifetimeQueueDepthSummary;
+  reviewDebt: FrontierInspectSwarmLifetimeReviewDebtSummary;
+  trueHumanQuestions: FrontierInspectSwarmLifetimeHumanQuestionSummary;
+}
+
+export interface FrontierInspectSwarmLifetimeLiveBucketSummary {
+  count: number;
+  ids: string[];
+  sources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeQueueDepthSummary {
+  activeWork: number;
+  coordinatorReview: number;
+  completedHistory: number;
+  rerunWork: number;
+  realBlockers: number;
+  humanQuestions: number;
+}
+
+export interface FrontierInspectSwarmLifetimeReviewDebtSummary {
+  count: number;
+  coordinatorReviewCount: number;
+  rerunWorkCount: number;
+  ids: string[];
+  sources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeHumanQuestionSummary extends FrontierInspectSwarmLifetimeLiveBucketSummary {
+  reasons: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeCostSummary {
+  known: boolean;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  sourceCount: number;
+  sources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeSourcesScannedSummary {
+  count: number;
+  packages: string[];
+  files: string[];
+  resources: string[];
 }
 
 export interface FrontierInspectQueryInput extends FrontierRegistryQueryInput {
@@ -1342,6 +1408,39 @@ export function createInspectFeatureMap(bundle: FrontierInspectBundle): Frontier
     version: FRONTIER_INSPECT_FEATURE_MAP_VERSION,
     generatedAt: Date.now(),
     features
+  };
+}
+
+export function createInspectSwarmLifetimeSummary(bundle: FrontierInspectBundle): FrontierInspectSwarmLifetimeSummary {
+  const observations = collectSwarmLifetimeObservations(bundle);
+  const activeAgents = collectSwarmLifetimeBucket(observations.active, {
+    id: (observation) => extractSwarmLifetimeAgentId(observation) ?? observation.id
+  });
+  const humanQuestions = collectSwarmLifetimeHumanQuestions(observations.humanQuestions);
+  const reviewDebt = collectSwarmLifetimeReviewDebt(observations.review, observations.rerun);
+  const queueDepthByMeaning = {
+    activeWork: activeAgents.count,
+    coordinatorReview: observations.review.length,
+    completedHistory: observations.completed.length,
+    rerunWork: observations.rerun.length,
+    realBlockers: observations.blocked.length,
+    humanQuestions: humanQuestions.count
+  };
+  const cost = collectSwarmLifetimeCost(observations.costCandidates);
+  return {
+    kind: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    live: {
+      activeAgents,
+      queueDepthByMeaning,
+      reviewDebt,
+      trueHumanQuestions: humanQuestions
+    },
+    usefulOutputCount: observations.completed.length,
+    cost,
+    sourcesScanned: collectSwarmLifetimeSourcesScanned(bundle),
+    archivedEvidence: summarizeInspectBundle(bundle)
   };
 }
 
@@ -2579,6 +2678,488 @@ function emptySummary(): FrontierInspectSummary {
     fileCount: 0,
     resourceCount: 0,
     errorCount: 0
+  };
+}
+
+type SwarmLifetimeMeaning = 'active' | 'review' | 'rerun' | 'blocked' | 'completed' | 'human-question' | 'unknown';
+
+interface SwarmLifetimeObservation {
+  id: string;
+  text: string;
+  sources: string[];
+  payloads: unknown[];
+  status?: string;
+}
+
+interface SwarmLifetimeObservations {
+  active: SwarmLifetimeObservation[];
+  review: SwarmLifetimeObservation[];
+  rerun: SwarmLifetimeObservation[];
+  blocked: SwarmLifetimeObservation[];
+  completed: SwarmLifetimeObservation[];
+  humanQuestions: SwarmLifetimeObservation[];
+  costCandidates: SwarmLifetimeObservation[];
+}
+
+function collectSwarmLifetimeObservations(bundle: FrontierInspectBundle): SwarmLifetimeObservations {
+  const observations: SwarmLifetimeObservations = {
+    active: [],
+    review: [],
+    rerun: [],
+    blocked: [],
+    completed: [],
+    humanQuestions: [],
+    costCandidates: []
+  };
+  for (const artifact of bundle.artifacts) addSwarmLifetimeObservation(observations, swarmObservationFromArtifact(artifact));
+  for (const event of bundle.events) addSwarmLifetimeObservation(observations, swarmObservationFromEvent(event));
+  for (const entry of bundle.graph.entries) addSwarmLifetimeObservation(observations, swarmObservationFromEntry(entry));
+  for (const record of bundle.graph.records) addSwarmLifetimeObservation(observations, swarmObservationFromRecord(record));
+  return observations;
+}
+
+function addSwarmLifetimeObservation(
+  observations: SwarmLifetimeObservations,
+  observation: SwarmLifetimeObservation | undefined
+): void {
+  if (observation === undefined) return;
+  const meaning = classifySwarmLifetimeMeaning(observation);
+  observations.costCandidates[observations.costCandidates.length] = observation;
+  if (meaning === 'active') observations.active[observations.active.length] = observation;
+  else if (meaning === 'review') observations.review[observations.review.length] = observation;
+  else if (meaning === 'rerun') observations.rerun[observations.rerun.length] = observation;
+  else if (meaning === 'blocked') observations.blocked[observations.blocked.length] = observation;
+  else if (meaning === 'human-question') observations.humanQuestions[observations.humanQuestions.length] = observation;
+  else if (meaning === 'completed') observations.completed[observations.completed.length] = observation;
+}
+
+function classifySwarmLifetimeMeaning(observation: SwarmLifetimeObservation): SwarmLifetimeMeaning {
+  const text = observation.text.toLowerCase();
+  if (looksLikeTrueHumanQuestion(text, observation.status, observation.payloads)) return 'human-question';
+  if (looksLikeActiveWork(text, observation.status, observation.payloads)) return 'active';
+  if (looksLikeCoordinatorReview(text, observation.status, observation.payloads)) return 'review';
+  if (looksLikeRerunWork(text, observation.status, observation.payloads)) return 'rerun';
+  if (looksLikeCompletedHistory(text, observation.status, observation.payloads)) return 'completed';
+  if (looksLikeBlockedWork(text, observation.status, observation.payloads)) return 'blocked';
+  return 'unknown';
+}
+
+function looksLikeTrueHumanQuestion(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /human[-\s]?blocked|human[-\s]?question/.test(status.toLowerCase())) return true;
+  if (/human-question:/.test(text) || /human question/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['reason', 'question', 'missingAuthority', 'missing-authority'], /human-question:|human question/i));
+}
+
+function looksLikeActiveWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(active|running|leased|working|in-?progress|inflight)$/.test(status.toLowerCase())) return true;
+  if (/\b(active|running|leased|working|in[- ]progress|inflight)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'lifecycle'], /^(active|running|leased|working|in-?progress|inflight)$/i));
+}
+
+function looksLikeCoordinatorReview(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(review|needs-review|coordinator-review|merge-review|pending-review)$/i.test(status)) return true;
+  if (/\b(coordinator review|needs review|merge review|pending review|review)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(review|needs-review|coordinator-review|merge-review|pending-review)$/i));
+}
+
+function looksLikeRerunWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(rerun|conflict-blocked|stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(rerun|conflict-blocked|stale-against-head|stale|rebase)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(rerun|conflict-blocked|stale-against-head|stale)$/i));
+}
+
+function looksLikeCompletedHistory(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(ok|changed|applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i.test(status)) return true;
+  if (/\b(ok|changed|applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(ok|changed|applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i));
+}
+
+function looksLikeBlockedWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(blocked|failed|error)$/i.test(status)) return true;
+  if (/\b(blocked|failed|error)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(blocked|failed|error)$/i));
+}
+
+function swarmObservationFromArtifact(artifact: FrontierInspectArtifact): SwarmLifetimeObservation {
+  const payloads: unknown[] = [];
+  if (artifact.data !== undefined) payloads[payloads.length] = artifact.data;
+  if (artifact.metadata !== undefined) payloads[payloads.length] = artifact.metadata;
+  return {
+    id: artifact.id,
+    text: [
+      artifact.id,
+      artifact.kind,
+      artifact.summary,
+      artifact.sourcePackage,
+      artifact.package,
+      artifact.feature,
+      artifact.tags.join(' '),
+      artifact.files.join(' '),
+      artifact.resources.join(' '),
+      artifact.entryIds.join(' '),
+      artifact.recordIds.join(' ')
+    ].filter(Boolean).join(' '),
+    sources: collectSwarmLifetimeSources(artifact.sourcePackage, artifact.package, artifact.files, artifact.resources),
+    payloads,
+    status: extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function swarmObservationFromEvent(event: FrontierInspectEvent): SwarmLifetimeObservation {
+  const payloads: unknown[] = [];
+  if (event.value !== undefined) payloads[payloads.length] = event.value;
+  if (event.metadata !== undefined) payloads[payloads.length] = event.metadata;
+  const text = [
+    event.id,
+    event.type,
+    event.label,
+    event.source,
+    event.sourcePackage,
+    event.package,
+    event.feature,
+    event.tags.join(' '),
+    event.file,
+    event.path,
+    event.resource,
+    event.selector,
+    event.routeId,
+    event.status,
+    event.severity
+  ].filter(Boolean).join(' ');
+  return {
+    id: event.id,
+    text,
+    sources: collectSwarmLifetimeSources(event.sourcePackage, event.package, [event.file], [event.resource, event.path, event.routeId, event.selector]),
+    payloads,
+    status: event.status ?? extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function swarmObservationFromEntry(entry: FrontierRegistryEntry): SwarmLifetimeObservation {
+  const payloads = [entry.metadata];
+  return {
+    id: entry.id,
+    text: [
+      entry.id,
+      entry.kind,
+      entry.description,
+      entry.package,
+      entry.feature,
+      (entry.tags ?? []).join(' '),
+      normalizeSourceFiles(entry).join(' '),
+      (entry.touches ?? []).join(' '),
+      (entry.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.dependsOn ?? []).join(' ')
+    ].filter(Boolean).join(' '),
+    sources: collectSwarmLifetimeSources(entry.package, undefined, normalizeSourceFiles(entry), entry.touches),
+    payloads,
+    status: extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function swarmObservationFromRecord(record: FrontierRegistryRecord): SwarmLifetimeObservation {
+  const payloads = [record.metadata];
+  return {
+    id: record.id,
+    text: [
+      record.id,
+      record.kind,
+      record.status,
+      record.error,
+      record.entryId,
+      record.durationMs === undefined ? undefined : String(record.durationMs),
+      (record.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (record.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' ')
+    ].filter(Boolean).join(' '),
+    sources: collectSwarmLifetimeSources(undefined, undefined, [], []),
+    payloads,
+    status: record.status ?? extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function collectSwarmLifetimeSources(
+  sourcePackage: string | undefined,
+  packageName: string | undefined,
+  files: readonly (string | undefined)[] | undefined,
+  resources: readonly (string | undefined)[] | undefined
+): string[] {
+  const values: string[] = [];
+  if (sourcePackage !== undefined) addUnique(values, 'package:' + sourcePackage);
+  if (packageName !== undefined) addUnique(values, 'package:' + packageName);
+  for (const file of files ?? []) if (file !== undefined && file !== '') addUnique(values, 'file:' + file);
+  for (const resource of resources ?? []) if (resource !== undefined && resource !== '') addUnique(values, 'resource:' + resource);
+  return values.sort();
+}
+
+function extractSwarmLifetimeStatus(payloads: readonly unknown[]): string | undefined {
+  for (let i = 0; i < payloads.length; i++) {
+    const value = extractSwarmLifetimeStringField(payloads[i], ['status', 'state', 'resultStatus', 'outcome', 'lifecycle', 'phase']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function extractSwarmLifetimeStringField(value: unknown, keys: readonly string[]): string | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && raw !== '') return raw;
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractSwarmLifetimeStringField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractSwarmLifetimeStringField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+}
+
+function hasSwarmLifetimeStringField(
+  value: unknown,
+  keys: readonly string[],
+  matcher: RegExp
+): boolean {
+  if (!isRecord(value)) return false;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && matcher.test(raw)) return true;
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) if (hasSwarmLifetimeStringField(item, keys, matcher)) return true;
+      continue;
+    }
+    if (isRecord(child) && hasSwarmLifetimeStringField(child, keys, matcher)) return true;
+  }
+  return false;
+}
+
+function collectSwarmLifetimeBucket(
+  observations: readonly SwarmLifetimeObservation[],
+  options: {
+    id?: (observation: SwarmLifetimeObservation) => string | undefined;
+  } = {}
+): FrontierInspectSwarmLifetimeLiveBucketSummary {
+  const ids: string[] = [];
+  const sources: string[] = [];
+  for (const observation of observations) {
+    const id = options.id?.(observation) ?? observation.id;
+    if (id !== undefined && id !== '') addUnique(ids, id);
+    for (const source of observation.sources) addUnique(sources, source);
+  }
+  return {
+    count: ids.length,
+    ids: ids.sort(),
+    sources: sources.sort()
+  };
+}
+
+function extractSwarmLifetimeAgentId(observation: SwarmLifetimeObservation): string | undefined {
+  for (const payload of observation.payloads) {
+    const value = extractSwarmLifetimeStringField(payload, ['agentId', 'workerId', 'jobId', 'taskId', 'leaseId', 'runId']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function collectSwarmLifetimeHumanQuestions(
+  observations: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimeHumanQuestionSummary {
+  const bucket = collectSwarmLifetimeBucket(observations, {
+    id: (observation) => extractSwarmLifetimeQuestionId(observation) ?? observation.id
+  });
+  const reasons = uniqueStrings(observations.flatMap((observation) => extractSwarmLifetimeQuestionReasons(observation)));
+  return {
+    ...bucket,
+    reasons
+  };
+}
+
+function extractSwarmLifetimeQuestionId(observation: SwarmLifetimeObservation): string | undefined {
+  for (const payload of observation.payloads) {
+    const value = extractSwarmLifetimeStringField(payload, ['questionId', 'decisionId', 'jobId', 'taskId', 'queueItemId', 'id']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function extractSwarmLifetimeQuestionReasons(observation: SwarmLifetimeObservation): string[] {
+  const reasons: string[] = [];
+  for (const payload of observation.payloads) {
+    const directReason = extractSwarmLifetimeStringField(payload, ['reason', 'question', 'summary', 'message']);
+    if (directReason !== undefined) addUnique(reasons, directReason);
+    if (isRecord(payload)) {
+      for (const key of ['reason', 'question', 'summary', 'message']) {
+        const raw = payload[key];
+        if (typeof raw === 'string' && raw.startsWith('human-question:')) addUnique(reasons, raw);
+      }
+    }
+  }
+  if (reasons.length === 0 && /human-question:/.test(observation.text)) addUnique(reasons, observation.text.slice(observation.text.indexOf('human-question:')));
+  return reasons;
+}
+
+function collectSwarmLifetimeReviewDebt(
+  review: readonly SwarmLifetimeObservation[],
+  rerun: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimeReviewDebtSummary {
+  const ids = uniqueStrings(review.concat(rerun).map((observation) => observation.id));
+  const sources = uniqueStrings(review.concat(rerun).flatMap((observation) => observation.sources));
+  return {
+    count: review.length + rerun.length,
+    coordinatorReviewCount: review.length,
+    rerunWorkCount: rerun.length,
+    ids,
+    sources
+  };
+}
+
+function collectSwarmLifetimeCost(observations: readonly SwarmLifetimeObservation[]): FrontierInspectSwarmLifetimeCostSummary | undefined {
+  let known = false;
+  const sources: string[] = [];
+  let inputTokens: number | undefined;
+  let cachedInputTokens: number | undefined;
+  let uncachedInputTokens: number | undefined;
+  let outputTokens: number | undefined;
+  let totalTokens: number | undefined;
+  let estimatedCostUsd: number | undefined;
+
+  for (const observation of observations) {
+    for (const payload of observation.payloads) {
+      const metrics = extractSwarmLifetimeCostMetrics(payload);
+      if (metrics === undefined) continue;
+      known = true;
+      for (const source of observation.sources) addUnique(sources, source);
+      inputTokens = sumOptionalNumbers(inputTokens, metrics.inputTokens);
+      cachedInputTokens = sumOptionalNumbers(cachedInputTokens, metrics.cachedInputTokens);
+      uncachedInputTokens = sumOptionalNumbers(uncachedInputTokens, metrics.uncachedInputTokens);
+      outputTokens = sumOptionalNumbers(outputTokens, metrics.outputTokens);
+      totalTokens = sumOptionalNumbers(totalTokens, metrics.totalTokens);
+      estimatedCostUsd = sumOptionalNumbers(estimatedCostUsd, metrics.estimatedCostUsd);
+    }
+  }
+
+  if (!known) return undefined;
+  return {
+    known,
+    inputTokens,
+    cachedInputTokens,
+    uncachedInputTokens,
+    outputTokens,
+    totalTokens,
+    estimatedCostUsd,
+    sourceCount: sources.length,
+    sources: sources.sort()
+  };
+}
+
+interface SwarmLifetimeCostMetrics {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+}
+
+function extractSwarmLifetimeCostMetrics(value: unknown): SwarmLifetimeCostMetrics | undefined {
+  if (!isRecord(value)) return undefined;
+  const metrics: SwarmLifetimeCostMetrics = {};
+  const directSources = [value, value.usage, value.cost, value.tokens, value.telemetry];
+  for (const source of directSources) {
+    if (!isRecord(source)) continue;
+    const inputTokens = extractSwarmLifetimeNumberField(source, ['inputTokens', 'input_tokens', 'promptTokens', 'prompt_tokens']);
+    const cachedInputTokens = extractSwarmLifetimeNumberField(source, ['cachedInputTokens', 'cached_input_tokens', 'inputCachedTokens', 'input_cached_tokens', 'promptCachedTokens', 'prompt_cached_tokens']);
+    const uncachedInputTokens = extractSwarmLifetimeNumberField(source, ['uncachedInputTokens', 'uncached_input_tokens', 'inputUncachedTokens', 'input_uncached_tokens']);
+    const outputTokens = extractSwarmLifetimeNumberField(source, ['outputTokens', 'output_tokens', 'completionTokens', 'completion_tokens']);
+    const totalTokens = extractSwarmLifetimeNumberField(source, ['totalTokens', 'total_tokens']);
+    const estimatedCostUsd = extractSwarmLifetimeNumberField(source, ['estimatedCostUsd', 'estimated_cost_usd', 'costUsd', 'usd']);
+    if (
+      inputTokens !== undefined ||
+      cachedInputTokens !== undefined ||
+      uncachedInputTokens !== undefined ||
+      outputTokens !== undefined ||
+      totalTokens !== undefined ||
+      estimatedCostUsd !== undefined
+    ) {
+      if (inputTokens !== undefined) metrics.inputTokens = inputTokens;
+      if (cachedInputTokens !== undefined) metrics.cachedInputTokens = cachedInputTokens;
+      if (uncachedInputTokens !== undefined) metrics.uncachedInputTokens = uncachedInputTokens;
+      if (outputTokens !== undefined) metrics.outputTokens = outputTokens;
+      if (totalTokens !== undefined) metrics.totalTokens = totalTokens;
+      if (estimatedCostUsd !== undefined) metrics.estimatedCostUsd = estimatedCostUsd;
+      return metrics;
+    }
+  }
+  return undefined;
+}
+
+function extractSwarmLifetimeNumberField(value: unknown, keys: readonly string[]): number | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    if (typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))) return Number(raw);
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractSwarmLifetimeNumberField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractSwarmLifetimeNumberField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+}
+
+function sumOptionalNumbers(left: number | undefined, right: number | undefined): number | undefined {
+  if (left === undefined) return right;
+  if (right === undefined) return left;
+  return left + right;
+}
+
+function collectSwarmLifetimeSourcesScanned(bundle: FrontierInspectBundle): FrontierInspectSwarmLifetimeSourcesScannedSummary {
+  const packages = new Set<string>();
+  const files = new Set<string>();
+  const resources = new Set<string>();
+  for (const entry of bundle.graph.entries) {
+    if (entry.package !== undefined) packages.add(entry.package);
+    for (const source of normalizeSourceFiles(entry)) files.add(source);
+    for (const touch of entry.touches ?? []) resources.add(touch);
+  }
+  for (const artifact of bundle.artifacts) {
+    if (artifact.sourcePackage !== undefined) packages.add(artifact.sourcePackage);
+    if (artifact.package !== undefined) packages.add(artifact.package);
+    for (const file of artifact.files) files.add(file);
+    for (const resource of artifact.resources) resources.add(resource);
+  }
+  for (const event of bundle.events) {
+    if (event.sourcePackage !== undefined) packages.add(event.sourcePackage);
+    if (event.package !== undefined) packages.add(event.package);
+    if (event.file !== undefined) files.add(event.file);
+    if (event.resource !== undefined) resources.add(event.resource);
+  }
+  return {
+    count: packages.size + files.size + resources.size,
+    packages: Array.from(packages).sort(),
+    files: Array.from(files).sort(),
+    resources: Array.from(resources).sort()
   };
 }
 

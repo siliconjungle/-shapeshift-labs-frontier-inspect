@@ -11,6 +11,7 @@ import {
   createInspectBundle,
   createInspectFeatureMap,
   createInspectProof,
+  createInspectSwarmLifetimeSummary,
   createInspectReport,
   decodeInspectJsonl,
   encodeInspectJsonl,
@@ -179,6 +180,136 @@ assert.deepStrictEqual(semanticDecodedArtifact.data.changedPaths, ['/frontierIns
 assert.strictEqual(semanticDecodedArtifact.data.semanticRegions[0].id, 'region:semantic-merge-helper');
 assert.strictEqual(semanticDecodedArtifact.data.proofLinks[0].hash, 'abc123');
 assert.ok(semanticDecoded.events.some((event) => event.status === 'changed'));
+
+const swarmLifetimeBundle = createInspectBundle({
+  id: 'inspect:swarm-lifetime',
+  artifacts: [
+    {
+      id: 'artifact:worker:active',
+      kind: 'worker-run',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'active worker output',
+      files: ['workers/active-worker.json'],
+      resources: ['run:worker-active'],
+      data: {
+        agentId: 'worker-17',
+        jobId: 'job:worker-17',
+        taskId: 'task:worker-17',
+        status: 'running',
+        usage: {
+          inputTokens: 120,
+          cachedInputTokens: 20,
+          uncachedInputTokens: 100,
+          outputTokens: 30,
+          totalTokens: 150
+        },
+        cost: {
+          estimatedCostUsd: 0.42
+        }
+      }
+    },
+    {
+      id: 'artifact:worker:useful',
+      kind: 'worker-result',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'completed worker output',
+      files: ['workers/useful-worker.json'],
+      resources: ['run:worker-useful'],
+      data: {
+        jobId: 'job:worker-useful',
+        taskId: 'task:worker-useful',
+        status: 'committed',
+        usage: {
+          inputTokens: 12,
+          outputTokens: 4,
+          totalTokens: 16
+        },
+        cost: {
+          estimatedCostUsd: 0.08
+        }
+      }
+    }
+  ],
+  events: [
+    {
+      id: 'event:review',
+      type: 'decision',
+      label: 'coordinator review',
+      source: 'swarm',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      status: 'needs-review',
+      resource: 'coordinator-review',
+      value: {
+        decisionId: 'decision:review',
+        jobId: 'job:review',
+        taskId: 'task:review',
+        status: 'needs-review'
+      }
+    },
+    {
+      id: 'event:rerun',
+      type: 'decision',
+      label: 'rerun stale worker',
+      source: 'swarm',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      status: 'rerun',
+      resource: 'rerun-work',
+      value: {
+        decisionId: 'decision:rerun',
+        jobId: 'job:rerun',
+        taskId: 'task:rerun',
+        status: 'rerun'
+      }
+    },
+    {
+      id: 'event:question',
+      type: 'decision',
+      label: 'human question',
+      source: 'swarm',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      status: 'human-blocked',
+      resource: 'human-questions',
+      value: {
+        questionId: 'question:approval',
+        decisionId: 'decision:question',
+        reason: 'human-question: owner=coordinator; surface=packages/frontier-inspect/src/index.ts; missing-authority=approval; question=Approve the new summary shape?; answer-code=approve|reject',
+        question: 'Approve the new summary shape?'
+      }
+    }
+  ]
+});
+
+const swarmLifetimeSummary = createInspectSwarmLifetimeSummary(swarmLifetimeBundle);
+assert.strictEqual(swarmLifetimeSummary.kind, 'frontier.inspect.swarm-lifetime-summary');
+assert.strictEqual(swarmLifetimeSummary.live.activeAgents.count, 1);
+assert.ok(swarmLifetimeSummary.live.activeAgents.ids.includes('worker-17'));
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.activeWork, 1);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.coordinatorReview, 1);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.rerunWork, 1);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.humanQuestions, 1);
+assert.strictEqual(swarmLifetimeSummary.live.reviewDebt.count, 2);
+assert.strictEqual(swarmLifetimeSummary.live.trueHumanQuestions.count, 1);
+assert.ok(swarmLifetimeSummary.live.trueHumanQuestions.reasons.some((reason) => reason.startsWith('human-question:')));
+assert.strictEqual(swarmLifetimeSummary.usefulOutputCount, 1);
+assert.strictEqual(swarmLifetimeSummary.cost?.known, true);
+assert.strictEqual(swarmLifetimeSummary.cost?.inputTokens, 132);
+assert.strictEqual(swarmLifetimeSummary.cost?.outputTokens, 34);
+assert.strictEqual(swarmLifetimeSummary.cost?.totalTokens, 166);
+assert.strictEqual(swarmLifetimeSummary.cost?.estimatedCostUsd, 0.5);
+assert.ok(swarmLifetimeSummary.sourcesScanned.packages.includes('@shapeshift-labs/frontier-swarm-codex'));
+assert.ok(swarmLifetimeSummary.sourcesScanned.files.includes('workers/active-worker.json'));
+assert.ok(swarmLifetimeSummary.archivedEvidence.artifactCount >= 2);
+assert.ok(swarmLifetimeSummary.archivedEvidence.eventCount >= 3);
 
 const bundle = createInspectBundle({
   id: 'inspect:smoke',

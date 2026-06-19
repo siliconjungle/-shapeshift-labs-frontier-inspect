@@ -338,6 +338,8 @@ const report = createInspectReport(bundle, {
 });
 ```
 
+For dashboard-style swarm views, `createInspectSwarmLifetimeSummary(bundle)` condenses mixed worker and decision evidence into a live/archived split instead of making raw lanes the primary human IA. The live section separates active agents, queue depth by terminal meaning, coordinator review debt, and true human questions. The summary also reports useful output count, token/cost totals when the bundle carries them, the source packages/files/resources that were scanned, and the archived bundle evidence snapshot for drill-down.
+
 ## Concepts
 
 - Bundle: normalized graph plus artifacts and events from multiple packages.
