@@ -644,6 +644,13 @@ export interface FrontierInspectSwarmLifetimePerformanceTaskKindSummary extends 
   taskKind: string;
 }
 
+export interface FrontierInspectSwarmLifetimePerformanceModelTaskKindSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  taskKind: string;
+  computeTierCount: number;
+  computeTiers: string[];
+}
+
 export interface FrontierInspectSwarmLifetimePerformanceComputeTierSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
   model: string;
   computeTier: string;
@@ -659,7 +666,9 @@ export interface FrontierInspectSwarmLifetimeModelPerformanceSummary extends Fro
   modelCount: number;
   computeTierCount: number;
   taskKindCount: number;
+  modelTaskKindCount: number;
   byModel: FrontierInspectSwarmLifetimePerformanceModelSummary[];
+  byTaskKind: FrontierInspectSwarmLifetimePerformanceModelTaskKindSummary[];
 }
 
 export interface FrontierInspectQueryInput extends FrontierRegistryQueryInput {
@@ -5784,9 +5793,11 @@ function collectSwarmLifetimeModelPerformance(
   const samples = collectSwarmLifetimePerformanceSamples(observations);
   const root = createSwarmLifetimePerformanceAggregate();
   const byModel = new Map<string, MutableSwarmLifetimePerformanceModelSummary>();
+  const byTaskKind = new Map<string, MutableSwarmLifetimePerformanceModelTaskKindSummary>();
   const modelKeys = new Set<string>();
   const computeTierKeys = new Set<string>();
   const taskKindKeys = new Set<string>();
+  const modelTaskKindKeys = new Set<string>();
 
   for (const sample of samples) {
     mergeSwarmLifetimePerformanceAggregate(root, sample);
@@ -5806,6 +5817,12 @@ function collectSwarmLifetimeModelPerformance(
     taskKindSummary.computeTier = sample.computeTier;
     mergeSwarmLifetimePerformanceAggregate(taskKindSummary, sample);
     taskKindKeys.add(taskKindKey);
+
+    const modelTaskKindKey = sample.model + '|' + sample.taskKind;
+    const modelTaskKindSummary = getMutableSwarmLifetimePerformanceModelTaskKindSummary(byTaskKind, sample.model, sample.taskKind);
+    mergeSwarmLifetimePerformanceAggregate(modelTaskKindSummary, sample);
+    modelTaskKindSummary.computeTiers.add(sample.computeTier);
+    modelTaskKindKeys.add(modelTaskKindKey);
   }
 
   return {
@@ -5813,9 +5830,16 @@ function collectSwarmLifetimeModelPerformance(
     modelCount: modelKeys.size,
     computeTierCount: computeTierKeys.size,
     taskKindCount: taskKindKeys.size,
+    modelTaskKindCount: modelTaskKindKeys.size,
     byModel: Array.from(byModel.values())
       .sort((left, right) => left.model.localeCompare(right.model))
-      .map((summary) => finalizeSwarmLifetimePerformanceModelSummary(summary))
+      .map((summary) => finalizeSwarmLifetimePerformanceModelSummary(summary)),
+    byTaskKind: Array.from(byTaskKind.values())
+      .sort((left, right) => {
+        if (left.model !== right.model) return left.model.localeCompare(right.model);
+        return left.taskKind.localeCompare(right.taskKind);
+      })
+      .map((summary) => finalizeSwarmLifetimePerformanceModelTaskKindSummary(summary))
   };
 }
 
@@ -5882,6 +5906,12 @@ interface MutableSwarmLifetimePerformanceComputeTierSummary extends MutableSwarm
 interface MutableSwarmLifetimePerformanceModelSummary extends MutableSwarmLifetimePerformanceAggregate {
   model: string;
   byComputeTier: Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>;
+}
+
+interface MutableSwarmLifetimePerformanceModelTaskKindSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  taskKind: string;
+  computeTiers: Set<string>;
 }
 
 function collectSwarmLifetimePerformanceSamples(
@@ -6237,6 +6267,24 @@ function getMutableSwarmLifetimePerformanceComputeTierSummary(
   return summary;
 }
 
+function getMutableSwarmLifetimePerformanceModelTaskKindSummary(
+  byTaskKind: Map<string, MutableSwarmLifetimePerformanceModelTaskKindSummary>,
+  model: string,
+  taskKind: string
+): MutableSwarmLifetimePerformanceModelTaskKindSummary {
+  const key = model + '|' + taskKind;
+  let summary = byTaskKind.get(key);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model,
+    taskKind,
+    computeTiers: new Set<string>()
+  };
+  byTaskKind.set(key, summary);
+  return summary;
+}
+
 function getMutableSwarmLifetimePerformanceTaskKindSummary(
   byTaskKind: Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>,
   taskKind: string
@@ -6330,6 +6378,18 @@ function finalizeSwarmLifetimePerformanceModelSummary(
     byComputeTier: Array.from(aggregate.byComputeTier.values())
       .sort((left, right) => left.computeTier.localeCompare(right.computeTier))
       .map((summary) => finalizeSwarmLifetimePerformanceComputeTierSummary(summary))
+  };
+}
+
+function finalizeSwarmLifetimePerformanceModelTaskKindSummary(
+  aggregate: MutableSwarmLifetimePerformanceModelTaskKindSummary
+): FrontierInspectSwarmLifetimePerformanceModelTaskKindSummary {
+  return {
+    model: aggregate.model,
+    taskKind: aggregate.taskKind,
+    computeTierCount: aggregate.computeTiers.size,
+    computeTiers: Array.from(aggregate.computeTiers).sort(),
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate)
   };
 }
 

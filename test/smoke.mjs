@@ -2136,6 +2136,17 @@ assert.deepStrictEqual(dashboardSummary.questions.reasons, [
 ]);
 assert.strictEqual(dashboardSummary.history.kind, 'frontier.inspect.swarm-lifetime-summary');
 assert.ok(dashboardSummary.performance.modelCount >= 1);
+assert.strictEqual(dashboardSummary.performance.modelTaskKindCount, 3);
+assert.deepStrictEqual(dashboardSummary.performance.byTaskKind.map((entry) => `${entry.model}:${entry.taskKind}`), [
+  'gpt-5.4-mini:documentation',
+  'gpt-5.4-mini:implementation',
+  'gpt-5.4-pro:review'
+]);
+const dashboardPerformanceByTaskKind = new Map(dashboardSummary.performance.byTaskKind.map((entry) => [`${entry.model}:${entry.taskKind}`, entry]));
+assert.strictEqual(dashboardPerformanceByTaskKind.get('gpt-5.4-mini:implementation')?.computeTierCount, 1);
+assert.deepStrictEqual(dashboardPerformanceByTaskKind.get('gpt-5.4-mini:implementation')?.computeTiers, ['codex.standard']);
+assert.strictEqual(dashboardPerformanceByTaskKind.get('gpt-5.4-mini:documentation')?.count, 1);
+assert.strictEqual(dashboardPerformanceByTaskKind.get('gpt-5.4-pro:review')?.successCount, 1);
 assert.ok(dashboardSummary.testing.failedGates.count >= 1);
 
 console.log('frontier inspect smoke passed');

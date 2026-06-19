@@ -405,6 +405,20 @@ const compact = [
 
 The lifetime summary now also includes `modelPerformance`, which groups samples by `model -> computeTier -> taskKind` and rolls up cost, success/useful-output rates, reruns, stale/reject rates, runtime, cheap-vs-expensive success, escalation benefit, and missing-pricing counts. Empty bundles still produce a defined summary object with zero counts and empty groups, and mixed-model bundles keep each model isolated while still aggregating the overall cost view.
 
+`modelPerformance.byTaskKind` flattens that tree into model/task-kind rows with `computeTierCount`, `computeTiers`, `successRate`, `usefulOutputRate`, `rerunRate`, and cost totals so dashboards can render a compact performance table without walking the nested compute-tier structure first.
+
+```ts
+const rows = dashboard.performance.byTaskKind.map((row) => ({
+  model: row.model,
+  taskKind: row.taskKind,
+  computeTiers: row.computeTiers,
+  successRate: row.successRate,
+  usefulOutputRate: row.usefulOutputRate,
+  rerunRate: row.rerunRate,
+  estimatedCostUsd: row.cost?.estimatedCostUsd
+}));
+```
+
 ## Concepts
 
 - Bundle: normalized graph plus artifacts and events from multiple packages.
