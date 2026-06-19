@@ -340,6 +340,8 @@ const report = createInspectReport(bundle, {
 
 For dashboard-style swarm views, `createInspectAutonomousRunOutcomeSummary(bundle)` condenses mixed worker and decision evidence into a live/archived split instead of making raw lanes the primary human IA. The live section separates active agents, visible run outcomes (`completed`, `committed`/`applied`, `conflicts`, `reruns`), coordinator review debt, true human questions, explicit package-gate states, and stale audit/intermediate rows that were suppressed from the visible outcome summary. The summary also reports visible final outcome count, token/cost totals when the bundle carries them, the source packages/files/resources that were scanned, and the archived bundle evidence snapshot for drill-down. `createInspectSwarmLifetimeSummary(bundle)` remains available as a compatibility alias.
 
+The lifetime summary now also includes `modelPerformance`, which groups samples by `model -> computeTier -> taskKind` and rolls up cost, success/useful-output rates, reruns, stale/reject rates, runtime, cheap-vs-expensive success, escalation benefit, and missing-pricing counts. Empty bundles still produce a defined summary object with zero counts and empty groups, and mixed-model bundles keep each model isolated while still aggregating the overall cost view.
+
 ## Concepts
 
 - Bundle: normalized graph plus artifacts and events from multiple packages.

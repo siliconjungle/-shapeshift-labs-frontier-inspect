@@ -194,10 +194,14 @@ const swarmLifetimeBundle = createInspectBundle({
       files: ['workers/active-worker.json'],
       resources: ['run:worker-active'],
       data: {
+        modelId: 'gpt-5.4-mini',
+        computeTier: 'codex.standard',
+        taskKind: 'implementation',
         agentId: 'worker-17',
         jobId: 'job:worker-17',
         taskId: 'task:worker-17',
         status: 'running',
+        runtimeMs: 1200,
         usage: {
           inputTokens: 120,
           cachedInputTokens: 20,
@@ -205,8 +209,12 @@ const swarmLifetimeBundle = createInspectBundle({
           outputTokens: 30,
           totalTokens: 150
         },
-        cost: {
-          estimatedCostUsd: 0.42
+        pricing: {
+          currency: 'USD',
+          inputCostPerUnit: 0.75,
+          cachedInputCostPerUnit: 0.075,
+          outputCostPerUnit: 4.5,
+          unitTokens: 1000000
         }
       }
     },
@@ -220,16 +228,24 @@ const swarmLifetimeBundle = createInspectBundle({
       files: ['workers/completed-worker.json'],
       resources: ['run:worker-completed'],
       data: {
+        modelId: 'gpt-5.4-mini',
+        computeTier: 'codex.standard',
+        taskKind: 'implementation',
         jobId: 'job:worker-completed',
         taskId: 'task:worker-completed',
         status: 'completed',
+        runtimeMs: 2100,
         usage: {
           inputTokens: 12,
           outputTokens: 4,
           totalTokens: 16
         },
-        cost: {
-          estimatedCostUsd: 0.08
+        pricing: {
+          currency: 'USD',
+          inputCostPerUnit: 0.75,
+          cachedInputCostPerUnit: 0.075,
+          outputCostPerUnit: 4.5,
+          unitTokens: 1000000
         }
       }
     },
@@ -243,16 +259,81 @@ const swarmLifetimeBundle = createInspectBundle({
       files: ['workers/committed-worker.json'],
       resources: ['run:worker-committed'],
       data: {
+        modelId: 'gpt-5.4-mini',
+        computeTier: 'codex.standard',
+        taskKind: 'implementation',
         jobId: 'job:worker-committed',
         taskId: 'task:worker-committed',
         status: 'committed',
+        runtimeMs: 3400,
         usage: {
           inputTokens: 9,
           outputTokens: 5,
           totalTokens: 14
         },
-        cost: {
-          estimatedCostUsd: 0.06
+        pricing: {
+          currency: 'USD',
+          inputCostPerUnit: 0.75,
+          cachedInputCostPerUnit: 0.075,
+          outputCostPerUnit: 4.5,
+          unitTokens: 1000000
+        },
+        wasteFlags: ['stale-worker-rerun']
+      }
+    },
+    {
+      id: 'artifact:worker:missing-pricing',
+      kind: 'worker-result',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'missing pricing worker output',
+      files: ['workers/missing-pricing-worker.json'],
+      resources: ['run:worker-missing-pricing'],
+      data: {
+        modelId: 'gpt-5.4-pro',
+        computeTier: 'codex.priority',
+        taskKind: 'review',
+        jobId: 'job:worker-missing-pricing',
+        taskId: 'task:worker-missing-pricing',
+        status: 'success',
+        runtimeMs: 5100,
+        usage: {
+          inputTokens: 60,
+          outputTokens: 12,
+          totalTokens: 72
+        }
+      }
+    },
+    {
+      id: 'artifact:worker:waste',
+      kind: 'worker-result',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'waste worker output',
+      files: ['workers/waste-worker.json'],
+      resources: ['run:worker-waste'],
+      data: {
+        modelId: 'gpt-5.4-mini',
+        computeTier: 'codex.standard',
+        taskKind: 'implementation',
+        jobId: 'job:worker-waste',
+        taskId: 'task:worker-waste',
+        status: 'queued',
+        runtimeMs: 900,
+        usage: {
+          inputTokens: 18,
+          outputTokens: 2,
+          totalTokens: 20
+        },
+        wasteFlags: ['rejected-worker'],
+        pricing: {
+          currency: 'USD',
+          inputCostPerUnit: 0.75,
+          cachedInputCostPerUnit: 0.075,
+          outputCostPerUnit: 4.5,
+          unitTokens: 1000000
         }
       }
     },
@@ -312,7 +393,7 @@ const swarmLifetimeBundle = createInspectBundle({
     {
       id: 'event:rerun',
       type: 'decision',
-      label: 'rerun stale worker',
+      label: 'rerun worker',
       source: 'swarm',
       sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
       package: '@shapeshift-labs/frontier-swarm-codex',
@@ -323,6 +404,22 @@ const swarmLifetimeBundle = createInspectBundle({
         decisionId: 'decision:rerun',
         jobId: 'job:rerun',
         taskId: 'task:rerun',
+        modelId: 'gpt-5.4-mini',
+        computeTier: 'codex.standard',
+        taskKind: 'rerun',
+        runtimeMs: 95,
+        usage: {
+          inputTokens: 14,
+          outputTokens: 2,
+          totalTokens: 16
+        },
+        pricing: {
+          currency: 'USD',
+          inputCostPerUnit: 0.75,
+          cachedInputCostPerUnit: 0.075,
+          outputCostPerUnit: 4.5,
+          unitTokens: 1000000
+        },
         status: 'rerun'
       }
     },
@@ -394,14 +491,67 @@ assert.strictEqual(swarmLifetimeSummary.visibleOutcomeCount, 2);
 assert.strictEqual(swarmLifetimeSummary.suppressedAuditArtifactCount, 1);
 assert.strictEqual(swarmLifetimeSummary.usefulOutputCount, 2);
 assert.strictEqual(swarmLifetimeSummary.cost?.known, true);
-assert.strictEqual(swarmLifetimeSummary.cost?.inputTokens, 141);
-assert.strictEqual(swarmLifetimeSummary.cost?.outputTokens, 39);
-assert.strictEqual(swarmLifetimeSummary.cost?.totalTokens, 180);
-assert.strictEqual(swarmLifetimeSummary.cost?.estimatedCostUsd, 0.56);
+assert.strictEqual(swarmLifetimeSummary.cost?.inputTokens, 233);
+assert.strictEqual(swarmLifetimeSummary.cost?.outputTokens, 55);
+assert.strictEqual(swarmLifetimeSummary.cost?.totalTokens, 288);
+assert.ok(Math.abs((swarmLifetimeSummary.cost?.estimatedCostUsd ?? 0) - 0.00030975) < 1e-12);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.modelCount, 2);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.computeTierCount, 2);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.taskKindCount, 3);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.count, 6);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.successCount, 3);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.usefulOutputCount, 3);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.cheapSuccessCount, 1);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.expensiveSuccessCount, 2);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.rerunCount, 1);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.staleCount, 1);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.rejectCount, 1);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.escalationBenefitCount, 1);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.missingPricingCount, 1);
+assert.ok(Math.abs(swarmLifetimeSummary.modelPerformance.successRate - 0.5) < 1e-12);
+assert.ok(Math.abs(swarmLifetimeSummary.modelPerformance.usefulOutputRate - 0.5) < 1e-12);
+assert.ok(Math.abs(swarmLifetimeSummary.modelPerformance.wasteRate - 0.5) < 1e-12);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.cost?.known, true);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.cost?.inputTokens, 233);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.cost?.outputTokens, 55);
+assert.strictEqual(swarmLifetimeSummary.modelPerformance.cost?.totalTokens, 288);
+assert.ok(Math.abs((swarmLifetimeSummary.modelPerformance.cost?.estimatedCostUsd ?? 0) - 0.00030975) < 1e-12);
+const modelPerformanceByModel = new Map(swarmLifetimeSummary.modelPerformance.byModel.map((entry) => [entry.model, entry]));
+const miniPerformance = modelPerformanceByModel.get('gpt-5.4-mini');
+const proPerformance = modelPerformanceByModel.get('gpt-5.4-pro');
+assert.ok(miniPerformance);
+assert.ok(proPerformance);
+assert.strictEqual(miniPerformance.count, 5);
+assert.strictEqual(miniPerformance.usefulOutputCount, 2);
+assert.strictEqual(miniPerformance.cheapSuccessCount, 1);
+assert.strictEqual(miniPerformance.expensiveSuccessCount, 1);
+assert.strictEqual(miniPerformance.rerunCount, 1);
+assert.strictEqual(miniPerformance.staleCount, 1);
+assert.strictEqual(miniPerformance.rejectCount, 1);
+assert.strictEqual(miniPerformance.escalationBenefitCount, 1);
+assert.strictEqual(miniPerformance.missingPricingCount, 0);
+assert.strictEqual(miniPerformance.cost?.known, true);
+assert.ok(miniPerformance.byComputeTier.some((entry) => entry.computeTier === 'codex.standard'));
+assert.strictEqual(proPerformance.count, 1);
+assert.strictEqual(proPerformance.usefulOutputCount, 1);
+assert.strictEqual(proPerformance.cheapSuccessCount, 0);
+assert.strictEqual(proPerformance.expensiveSuccessCount, 1);
+assert.strictEqual(proPerformance.missingPricingCount, 1);
+assert.strictEqual(proPerformance.cost?.known, false);
+assert.strictEqual(proPerformance.cost?.inputTokens, 60);
+assert.strictEqual(proPerformance.cost?.outputTokens, 12);
+assert.strictEqual(proPerformance.cost?.totalTokens, 72);
 assert.ok(swarmLifetimeSummary.sourcesScanned.packages.includes('@shapeshift-labs/frontier-swarm-codex'));
 assert.ok(swarmLifetimeSummary.sourcesScanned.files.includes('workers/active-worker.json'));
 assert.ok(swarmLifetimeSummary.archivedEvidence.artifactCount >= 5);
 assert.ok(swarmLifetimeSummary.archivedEvidence.eventCount >= 4);
+
+const emptyLifetimeSummary = createInspectAutonomousRunOutcomeSummary(createInspectBundle({ id: 'inspect:empty-history' }));
+assert.strictEqual(emptyLifetimeSummary.modelPerformance.count, 0);
+assert.strictEqual(emptyLifetimeSummary.modelPerformance.modelCount, 0);
+assert.strictEqual(emptyLifetimeSummary.modelPerformance.byModel.length, 0);
+assert.strictEqual(emptyLifetimeSummary.modelPerformance.missingPricingCount, 0);
+assert.strictEqual(emptyLifetimeSummary.modelPerformance.cost, undefined);
 
 const bundle = createInspectBundle({
   id: 'inspect:smoke',

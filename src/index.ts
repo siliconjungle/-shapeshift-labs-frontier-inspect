@@ -215,6 +215,7 @@ export interface FrontierInspectSwarmLifetimeSummary {
   suppressedAuditArtifactCount: number;
   usefulOutputCount: number;
   cost?: FrontierInspectSwarmLifetimeCostSummary;
+  modelPerformance: FrontierInspectSwarmLifetimeModelPerformanceSummary;
   sourcesScanned: FrontierInspectSwarmLifetimeSourcesScannedSummary;
   archivedEvidence: FrontierInspectSummary;
 }
@@ -299,6 +300,64 @@ export interface FrontierInspectSwarmLifetimeSourcesScannedSummary {
   packages: string[];
   files: string[];
   resources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeRuntimeSummary {
+  count: number;
+  totalMs?: number;
+  averageMs?: number;
+  minMs?: number;
+  maxMs?: number;
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  count: number;
+  successCount: number;
+  usefulOutputCount: number;
+  rerunCount: number;
+  staleCount: number;
+  rejectCount: number;
+  cheapSuccessCount: number;
+  expensiveSuccessCount: number;
+  wasteCount: number;
+  escalationBenefitCount: number;
+  successRate: number;
+  usefulOutputRate: number;
+  rerunRate: number;
+  staleRate: number;
+  rejectRate: number;
+  cheapSuccessRate: number;
+  expensiveSuccessRate: number;
+  wasteRate: number;
+  escalationBenefitRate: number;
+  missingPricingCount: number;
+  missingPricingReasons: string[];
+  runtimeMs: FrontierInspectSwarmLifetimeRuntimeSummary;
+  cost?: FrontierInspectSwarmLifetimeCostSummary;
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceTaskKindSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  computeTier: string;
+  taskKind: string;
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceComputeTierSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  computeTier: string;
+  byTaskKind: FrontierInspectSwarmLifetimePerformanceTaskKindSummary[];
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceModelSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  byComputeTier: FrontierInspectSwarmLifetimePerformanceComputeTierSummary[];
+}
+
+export interface FrontierInspectSwarmLifetimeModelPerformanceSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  modelCount: number;
+  computeTierCount: number;
+  taskKindCount: number;
+  byModel: FrontierInspectSwarmLifetimePerformanceModelSummary[];
 }
 
 export interface FrontierInspectQueryInput extends FrontierRegistryQueryInput {
@@ -1454,6 +1513,7 @@ export function createInspectSwarmLifetimeSummary(bundle: FrontierInspectBundle)
   const reviewDebt = collectSwarmLifetimeReviewDebt(observations.review, observations.rerun);
   const packageGates = collectSwarmLifetimePackageGates(observations.packageGateObservations);
   const suppressedAuditArtifacts = collectSwarmLifetimeSuppressedAuditArtifacts(observations.suppressedAuditArtifacts);
+  const modelPerformance = collectSwarmLifetimeModelPerformance(observations);
   const queueDepthByMeaning = {
     activeWork: activeAgents.count,
     coordinatorReview: observations.review.length,
@@ -1466,7 +1526,7 @@ export function createInspectSwarmLifetimeSummary(bundle: FrontierInspectBundle)
     realBlockers: observations.blocked.length,
     humanQuestions: humanQuestions.count
   };
-  const cost = collectSwarmLifetimeCost(observations.costCandidates);
+  const cost = modelPerformance.cost ?? collectSwarmLifetimeCost(observations.costCandidates);
   const visibleOutcomeCount = runOutcomes.completed.count + runOutcomes.committedApplied.count;
   return {
     kind: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND,
@@ -1485,6 +1545,7 @@ export function createInspectSwarmLifetimeSummary(bundle: FrontierInspectBundle)
     suppressedAuditArtifactCount: suppressedAuditArtifacts.count,
     usefulOutputCount: visibleOutcomeCount,
     cost,
+    modelPerformance,
     sourcesScanned: collectSwarmLifetimeSourcesScanned(bundle),
     archivedEvidence: summarizeInspectBundle(bundle)
   };
@@ -3338,6 +3399,632 @@ function collectSwarmLifetimeCost(observations: readonly SwarmLifetimeObservatio
     sourceCount: sources.length,
     sources: sources.sort()
   };
+}
+
+function collectSwarmLifetimeModelPerformance(
+  observations: SwarmLifetimeObservations
+): FrontierInspectSwarmLifetimeModelPerformanceSummary {
+  const samples = collectSwarmLifetimePerformanceSamples(observations);
+  const root = createSwarmLifetimePerformanceAggregate();
+  const byModel = new Map<string, MutableSwarmLifetimePerformanceModelSummary>();
+  const modelKeys = new Set<string>();
+  const computeTierKeys = new Set<string>();
+  const taskKindKeys = new Set<string>();
+
+  for (const sample of samples) {
+    mergeSwarmLifetimePerformanceAggregate(root, sample);
+    const modelSummary = getMutableSwarmLifetimePerformanceModelSummary(byModel, sample.model);
+    mergeSwarmLifetimePerformanceAggregate(modelSummary, sample);
+    modelKeys.add(sample.model);
+
+    const computeTierKey = sample.model + '|' + sample.computeTier;
+    const computeTierSummary = getMutableSwarmLifetimePerformanceComputeTierSummary(modelSummary.byComputeTier, sample.computeTier);
+    computeTierSummary.model = sample.model;
+    mergeSwarmLifetimePerformanceAggregate(computeTierSummary, sample);
+    computeTierKeys.add(computeTierKey);
+
+    const taskKindKey = computeTierKey + '|' + sample.taskKind;
+    const taskKindSummary = getMutableSwarmLifetimePerformanceTaskKindSummary(computeTierSummary.byTaskKind, sample.taskKind);
+    taskKindSummary.model = sample.model;
+    taskKindSummary.computeTier = sample.computeTier;
+    mergeSwarmLifetimePerformanceAggregate(taskKindSummary, sample);
+    taskKindKeys.add(taskKindKey);
+  }
+
+  return {
+    ...finalizeSwarmLifetimePerformanceSummary(root),
+    modelCount: modelKeys.size,
+    computeTierCount: computeTierKeys.size,
+    taskKindCount: taskKindKeys.size,
+    byModel: Array.from(byModel.values())
+      .sort((left, right) => left.model.localeCompare(right.model))
+      .map((summary) => finalizeSwarmLifetimePerformanceModelSummary(summary))
+  };
+}
+
+interface SwarmLifetimePerformanceSample {
+  model: string;
+  computeTier: string;
+  taskKind: string;
+  sources: string[];
+  runtimeMs?: number;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  usefulOutput: boolean;
+  rerun: boolean;
+  stale: boolean;
+  reject: boolean;
+  cheapSuccess: boolean;
+  expensiveSuccess: boolean;
+  escalationBenefit: boolean;
+  missingPricingReason?: string;
+}
+
+interface MutableSwarmLifetimePerformanceAggregate {
+  count: number;
+  successCount: number;
+  usefulOutputCount: number;
+  rerunCount: number;
+  staleCount: number;
+  rejectCount: number;
+  cheapSuccessCount: number;
+  expensiveSuccessCount: number;
+  escalationBenefitCount: number;
+  missingPricingCount: number;
+  missingPricingReasons: string[];
+  runtimeCount: number;
+  runtimeTotalMs?: number;
+  runtimeMinMs?: number;
+  runtimeMaxMs?: number;
+  costKnownCount: number;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  sources: string[];
+}
+
+interface MutableSwarmLifetimePerformanceTaskKindSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  computeTier: string;
+  taskKind: string;
+}
+
+interface MutableSwarmLifetimePerformanceComputeTierSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  computeTier: string;
+  byTaskKind: Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>;
+}
+
+interface MutableSwarmLifetimePerformanceModelSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  byComputeTier: Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>;
+}
+
+function collectSwarmLifetimePerformanceSamples(
+  observations: SwarmLifetimeObservations
+): SwarmLifetimePerformanceSample[] {
+  const samples: SwarmLifetimePerformanceSample[] = [];
+  for (const observation of observations.costCandidates) {
+    const sample = collectSwarmLifetimePerformanceSample(observation);
+    if (sample !== undefined) samples[samples.length] = sample;
+  }
+  return samples;
+}
+
+function collectSwarmLifetimePerformanceSample(observation: SwarmLifetimeObservation): SwarmLifetimePerformanceSample | undefined {
+  const payloads = observation.payloads;
+  const model = firstSwarmLifetimeStringField(payloads, ['modelId', 'model', 'pricingModel']);
+  const computeTier = firstSwarmLifetimeStringField(payloads, ['computeTier', 'serviceTier', 'tier', 'compute']);
+  const rawTaskKind = firstSwarmLifetimeStringField(payloads, ['taskKind', 'workKind', 'kind']);
+  const taskKind = rawTaskKind !== undefined && !isSwarmLifetimeGenericTaskKind(rawTaskKind) ? rawTaskKind : undefined;
+  const runtimeMs = firstSwarmLifetimeNumberField(payloads, ['runtimeMs', 'runtime_ms', 'durationMs', 'duration_ms']);
+  const inputTokens = firstSwarmLifetimeNumberField(payloads, ['inputTokens', 'input_tokens', 'promptTokens', 'prompt_tokens']);
+  const cachedInputTokens = firstSwarmLifetimeNumberField(payloads, ['cachedInputTokens', 'cached_input_tokens', 'inputCachedTokens', 'input_cached_tokens', 'promptCachedTokens', 'prompt_cached_tokens']);
+  const uncachedInputTokens = firstSwarmLifetimeNumberField(payloads, ['uncachedInputTokens', 'uncached_input_tokens', 'inputUncachedTokens', 'input_uncached_tokens']);
+  const outputTokens = firstSwarmLifetimeNumberField(payloads, ['outputTokens', 'output_tokens', 'completionTokens', 'completion_tokens']);
+  const totalTokens = firstSwarmLifetimeNumberField(payloads, ['totalTokens', 'total_tokens']);
+  const explicitEstimatedCostUsd = firstSwarmLifetimeNumberField(payloads, ['estimatedCostUsd', 'estimated_cost_usd', 'totalCost', 'total_cost']);
+  const hasPricing = hasSwarmLifetimePricing(payloads);
+  const pricing = readSwarmLifetimePricing(payloads);
+  const normalizedUsage = normalizeSwarmLifetimeUsage({
+    inputTokens,
+    cachedInputTokens,
+    uncachedInputTokens,
+    outputTokens,
+    totalTokens
+  });
+  let estimatedCostUsd = explicitEstimatedCostUsd;
+  if (estimatedCostUsd === undefined && pricing !== undefined) {
+    estimatedCostUsd = estimateSwarmLifetimeUsageCost(normalizedUsage, pricing);
+  }
+  const usefulOutput = looksLikeSwarmLifetimeUsefulOutput(observation.text, observation.status, payloads);
+  const rerun = looksLikeRerunWork(observation.text, observation.status, payloads);
+  const stale = looksLikeSwarmLifetimeStale(observation.text, observation.status, payloads);
+  const reject = looksLikeSwarmLifetimeReject(observation.text, observation.status, payloads);
+  const wasteFlags = uniqueStrings(payloads.flatMap((payload) => extractSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteFlags', 'wasteReasons', 'flags'])));
+  const hasWasteSignals = rerun || stale || reject || wasteFlags.length > 0;
+  const hasPerformanceSignal =
+    model !== undefined ||
+    computeTier !== undefined ||
+    taskKind !== undefined ||
+    runtimeMs !== undefined ||
+    normalizedUsage.inputTokens !== undefined ||
+    normalizedUsage.cachedInputTokens !== undefined ||
+    normalizedUsage.uncachedInputTokens !== undefined ||
+    normalizedUsage.outputTokens !== undefined ||
+    normalizedUsage.totalTokens !== undefined ||
+    estimatedCostUsd !== undefined ||
+    hasPricing ||
+    wasteFlags.length > 0;
+  const missingPricingReason = (estimatedCostUsd === undefined && (hasPricing || normalizedUsage.inputTokens !== undefined || normalizedUsage.outputTokens !== undefined || runtimeMs !== undefined))
+    ? (hasPricing ? 'missing-token-usage' : 'missing-pricing')
+    : undefined;
+  if (!hasPerformanceSignal) {
+    return undefined;
+  }
+  const costKnown = estimatedCostUsd !== undefined;
+  const cheapSuccess = usefulOutput && costKnown && !hasWasteSignals;
+  const expensiveSuccess = usefulOutput && !cheapSuccess;
+  return {
+    model: model ?? 'unknown',
+    computeTier: computeTier ?? 'unknown',
+    taskKind: taskKind ?? 'unknown',
+    sources: observation.sources,
+    runtimeMs,
+    ...normalizedUsage,
+    ...(estimatedCostUsd !== undefined ? { estimatedCostUsd } : {}),
+    usefulOutput,
+    rerun,
+    stale,
+    reject,
+    cheapSuccess,
+    expensiveSuccess,
+    escalationBenefit: usefulOutput && hasWasteSignals,
+    ...(missingPricingReason ? { missingPricingReason } : {})
+  };
+}
+
+function firstSwarmLifetimeStringField(payloads: readonly unknown[], keys: readonly string[]): string | undefined {
+  for (const payload of payloads) {
+    const value = extractSwarmLifetimeStringField(payload, keys);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function firstSwarmLifetimeNumberField(payloads: readonly unknown[], keys: readonly string[]): number | undefined {
+  for (const payload of payloads) {
+    const value = extractSwarmLifetimeNumberField(payload, keys);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function isSwarmLifetimeGenericTaskKind(value: string): boolean {
+  return /^(agent-usage|audit|collection(?:-row)?|coordinator-gate|decision|event|frontier\..*|gate|human-question|package-gate|telemetry|worker-run|worker-result)$/i.test(value);
+}
+
+function extractSwarmLifetimeStringArrayField(value: unknown, keys: readonly string[]): string[] {
+  if (!isRecord(value)) return [];
+  const values: string[] = [];
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && raw !== '') addUnique(values, raw);
+    else if (Array.isArray(raw)) {
+      for (const item of raw) {
+        if (typeof item === 'string' && item !== '') addUnique(values, item);
+      }
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (isRecord(item)) {
+          for (const nested of extractSwarmLifetimeStringArrayField(item, keys)) addUnique(values, nested);
+        }
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      for (const nested of extractSwarmLifetimeStringArrayField(child, keys)) addUnique(values, nested);
+    }
+  }
+  return values;
+}
+
+interface SwarmLifetimeUsageTotals {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+}
+
+function normalizeSwarmLifetimeUsage(input: SwarmLifetimeUsageTotals): SwarmLifetimeUsageTotals {
+  let inputTokens = input.inputTokens;
+  let cachedInputTokens = input.cachedInputTokens;
+  let uncachedInputTokens = input.uncachedInputTokens;
+  const outputTokens = input.outputTokens;
+  let totalTokens = input.totalTokens;
+
+  if (inputTokens === undefined && (cachedInputTokens !== undefined || uncachedInputTokens !== undefined)) {
+    inputTokens = (cachedInputTokens || 0) + (uncachedInputTokens || 0);
+  }
+  if (uncachedInputTokens === undefined && inputTokens !== undefined && cachedInputTokens !== undefined) {
+    uncachedInputTokens = Math.max(0, inputTokens - cachedInputTokens);
+  }
+  if (totalTokens === undefined && (inputTokens !== undefined || outputTokens !== undefined)) {
+    totalTokens = (inputTokens || 0) + (outputTokens || 0);
+  }
+
+  return {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(cachedInputTokens !== undefined ? { cachedInputTokens } : {}),
+    ...(uncachedInputTokens !== undefined ? { uncachedInputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(totalTokens !== undefined ? { totalTokens } : {})
+  };
+}
+
+interface SwarmLifetimePricingInput {
+  currency?: string;
+  inputCostPerUnit?: number;
+  cachedInputCostPerUnit?: number;
+  outputCostPerUnit?: number;
+  unitTokens?: number;
+}
+
+function hasSwarmLifetimePricing(payloads: readonly unknown[]): boolean {
+  return readSwarmLifetimePricing(payloads) !== undefined;
+}
+
+function readSwarmLifetimePricing(payloads: readonly unknown[]): SwarmLifetimePricingInput | undefined {
+  for (const payload of payloads) {
+    if (!isRecord(payload)) continue;
+    const candidates = [payload, payload.pricing, payload.cost, payload.modelPricing];
+    for (const candidate of candidates) {
+      if (!isRecord(candidate)) continue;
+      const currency = firstSwarmLifetimeStringField([candidate], ['currency']);
+      const inputCostPerUnit = firstSwarmLifetimeNumberField([candidate], ['inputCostPerUnit', 'input_cost_per_unit']);
+      const cachedInputCostPerUnit = firstSwarmLifetimeNumberField([candidate], ['cachedInputCostPerUnit', 'cached_input_cost_per_unit']);
+      const outputCostPerUnit = firstSwarmLifetimeNumberField([candidate], ['outputCostPerUnit', 'output_cost_per_unit']);
+      const unitTokens = firstSwarmLifetimeNumberField([candidate], ['unitTokens', 'unit_tokens']);
+      if (
+        currency !== undefined ||
+        inputCostPerUnit !== undefined ||
+        cachedInputCostPerUnit !== undefined ||
+        outputCostPerUnit !== undefined ||
+        unitTokens !== undefined
+      ) {
+        return {
+          ...(currency !== undefined ? { currency } : {}),
+          ...(inputCostPerUnit !== undefined ? { inputCostPerUnit } : {}),
+          ...(cachedInputCostPerUnit !== undefined ? { cachedInputCostPerUnit } : {}),
+          ...(outputCostPerUnit !== undefined ? { outputCostPerUnit } : {}),
+          ...(unitTokens !== undefined ? { unitTokens } : {})
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
+function estimateSwarmLifetimeUsageCost(
+  usage: SwarmLifetimeUsageTotals,
+  pricing: SwarmLifetimePricingInput
+): number | undefined {
+  const unitTokens = pricing.unitTokens && pricing.unitTokens > 0 ? pricing.unitTokens : 1;
+  const inputTokens = usage.inputTokens;
+  const cachedInputTokens = usage.cachedInputTokens;
+  const uncachedInputTokens = usage.uncachedInputTokens ?? (
+    inputTokens !== undefined && cachedInputTokens !== undefined ? Math.max(0, inputTokens - cachedInputTokens) : undefined
+  );
+  const outputTokens = usage.outputTokens;
+  const inputCostPerUnit = pricing.inputCostPerUnit;
+  const cachedInputCostPerUnit = pricing.cachedInputCostPerUnit;
+  const outputCostPerUnit = pricing.outputCostPerUnit;
+  let inputCost: number | undefined;
+  let cachedInputCost: number | undefined;
+  let uncachedInputCost: number | undefined;
+  let outputCost: number | undefined;
+
+  if (cachedInputTokens !== undefined && cachedInputCostPerUnit !== undefined) {
+    cachedInputCost = (cachedInputTokens * cachedInputCostPerUnit) / unitTokens;
+  }
+  if (uncachedInputTokens !== undefined && inputCostPerUnit !== undefined) {
+    uncachedInputCost = (uncachedInputTokens * inputCostPerUnit) / unitTokens;
+  } else if (cachedInputTokens === undefined && inputTokens !== undefined && inputCostPerUnit !== undefined) {
+    inputCost = (inputTokens * inputCostPerUnit) / unitTokens;
+  }
+  if (cachedInputCost !== undefined || uncachedInputCost !== undefined) {
+    inputCost = (cachedInputCost || 0) + (uncachedInputCost || 0);
+  }
+  if (outputTokens !== undefined && outputCostPerUnit !== undefined) {
+    outputCost = (outputTokens * outputCostPerUnit) / unitTokens;
+  }
+  const totalCost = sumOptionalNumbers(inputCost, outputCost);
+  return totalCost === undefined ? undefined : roundUsd(totalCost);
+}
+
+function looksLikeSwarmLifetimeUsefulOutput(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(ok|changed|skipped|recorded|accepted|resolved|completed|done|passed|applied|committed|success)$/i.test(status)) return true;
+  if (/\b(ok|changed|skipped|recorded|accepted|resolved|completed|done|passed|applied|committed|success)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(ok|changed|skipped|recorded|accepted|resolved|completed|done|passed|applied|committed|success)$/i));
+}
+
+function looksLikeSwarmLifetimeStale(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(stale-against-head|stale|rebase)\b/.test(text)) return true;
+  return payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(stale-against-head|stale)$/i)
+    || hasSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteReasons', 'flags'], /(?:stale|rerun|rebase)/i)
+  );
+}
+
+function looksLikeSwarmLifetimeReject(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(rejected|blocked|failed|error)$/i.test(status)) return true;
+  if (/\b(rejected|blocked|failed|error)\b/.test(text)) return true;
+  return payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(rejected|blocked|failed|error)$/i)
+    || hasSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteReasons', 'flags'], /(?:rejected|blocked|failed|error)/i)
+  );
+}
+
+function hasSwarmLifetimeStringArrayField(
+  value: unknown,
+  keys: readonly string[],
+  matcher: RegExp
+): boolean {
+  if (!isRecord(value)) return false;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && matcher.test(raw)) return true;
+    if (Array.isArray(raw)) {
+      for (const item of raw) if (typeof item === 'string' && matcher.test(item)) return true;
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (isRecord(item) && hasSwarmLifetimeStringArrayField(item, keys, matcher)) return true;
+        if (typeof item === 'string' && matcher.test(item)) return true;
+      }
+      continue;
+    }
+    if (isRecord(child) && hasSwarmLifetimeStringArrayField(child, keys, matcher)) return true;
+  }
+  return false;
+}
+
+interface MutableSwarmLifetimePerformanceSummary extends MutableSwarmLifetimePerformanceAggregate {
+  byModel: Map<string, MutableSwarmLifetimePerformanceModelSummary>;
+}
+
+function createSwarmLifetimePerformanceAggregate(): MutableSwarmLifetimePerformanceSummary {
+  return {
+    count: 0,
+    successCount: 0,
+    usefulOutputCount: 0,
+    rerunCount: 0,
+    staleCount: 0,
+    rejectCount: 0,
+    cheapSuccessCount: 0,
+    expensiveSuccessCount: 0,
+    escalationBenefitCount: 0,
+    missingPricingCount: 0,
+    missingPricingReasons: [],
+    runtimeCount: 0,
+    costKnownCount: 0,
+    sources: [],
+    byModel: new Map<string, MutableSwarmLifetimePerformanceModelSummary>()
+  };
+}
+
+function getMutableSwarmLifetimePerformanceModelSummary(
+  byModel: Map<string, MutableSwarmLifetimePerformanceModelSummary>,
+  model: string
+): MutableSwarmLifetimePerformanceModelSummary {
+  let summary = byModel.get(model);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model,
+    byComputeTier: new Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>()
+  };
+  byModel.set(model, summary);
+  return summary;
+}
+
+function getMutableSwarmLifetimePerformanceComputeTierSummary(
+  byComputeTier: Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>,
+  computeTier: string
+): MutableSwarmLifetimePerformanceComputeTierSummary {
+  let summary = byComputeTier.get(computeTier);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model: 'unknown',
+    computeTier,
+    byTaskKind: new Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>()
+  };
+  byComputeTier.set(computeTier, summary);
+  return summary;
+}
+
+function getMutableSwarmLifetimePerformanceTaskKindSummary(
+  byTaskKind: Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>,
+  taskKind: string
+): MutableSwarmLifetimePerformanceTaskKindSummary {
+  let summary = byTaskKind.get(taskKind);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model: 'unknown',
+    computeTier: 'unknown',
+    taskKind
+  };
+  byTaskKind.set(taskKind, summary);
+  return summary;
+}
+
+function mergeSwarmLifetimePerformanceAggregate(
+  aggregate: MutableSwarmLifetimePerformanceAggregate,
+  sample: SwarmLifetimePerformanceSample
+): void {
+  aggregate.count++;
+  if (sample.usefulOutput) {
+    aggregate.successCount++;
+    aggregate.usefulOutputCount++;
+    if (sample.cheapSuccess) aggregate.cheapSuccessCount++;
+    if (sample.expensiveSuccess) aggregate.expensiveSuccessCount++;
+    if (sample.escalationBenefit) aggregate.escalationBenefitCount++;
+  }
+  if (sample.rerun) aggregate.rerunCount++;
+  if (sample.stale) aggregate.staleCount++;
+  if (sample.reject) aggregate.rejectCount++;
+  if (sample.missingPricingReason !== undefined) {
+    aggregate.missingPricingCount++;
+    addUnique(aggregate.missingPricingReasons, sample.missingPricingReason);
+  }
+  if (sample.runtimeMs !== undefined) {
+    aggregate.runtimeCount++;
+    aggregate.runtimeTotalMs = sumOptionalNumbers(aggregate.runtimeTotalMs, sample.runtimeMs);
+    aggregate.runtimeMinMs = aggregate.runtimeMinMs === undefined ? sample.runtimeMs : Math.min(aggregate.runtimeMinMs, sample.runtimeMs);
+    aggregate.runtimeMaxMs = aggregate.runtimeMaxMs === undefined ? sample.runtimeMs : Math.max(aggregate.runtimeMaxMs, sample.runtimeMs);
+  }
+  if (sample.estimatedCostUsd !== undefined) {
+    aggregate.costKnownCount++;
+    aggregate.estimatedCostUsd = sumOptionalNumbers(aggregate.estimatedCostUsd, sample.estimatedCostUsd);
+  }
+  aggregate.inputTokens = sumOptionalNumbers(aggregate.inputTokens, sample.inputTokens);
+  aggregate.cachedInputTokens = sumOptionalNumbers(aggregate.cachedInputTokens, sample.cachedInputTokens);
+  aggregate.uncachedInputTokens = sumOptionalNumbers(aggregate.uncachedInputTokens, sample.uncachedInputTokens);
+  aggregate.outputTokens = sumOptionalNumbers(aggregate.outputTokens, sample.outputTokens);
+  aggregate.totalTokens = sumOptionalNumbers(aggregate.totalTokens, sample.totalTokens);
+  for (const source of sample.sources) addUnique(aggregate.sources, source);
+}
+
+function finalizeSwarmLifetimePerformanceSummary(
+  aggregate: MutableSwarmLifetimePerformanceAggregate
+): FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  const wasteCount = Math.max(0, aggregate.count - aggregate.usefulOutputCount);
+  return {
+    count: aggregate.count,
+    successCount: aggregate.successCount,
+    usefulOutputCount: aggregate.usefulOutputCount,
+    rerunCount: aggregate.rerunCount,
+    staleCount: aggregate.staleCount,
+    rejectCount: aggregate.rejectCount,
+    cheapSuccessCount: aggregate.cheapSuccessCount,
+    expensiveSuccessCount: aggregate.expensiveSuccessCount,
+    wasteCount,
+    escalationBenefitCount: aggregate.escalationBenefitCount,
+    successRate: rateForCount(aggregate.successCount, aggregate.count),
+    usefulOutputRate: rateForCount(aggregate.usefulOutputCount, aggregate.count),
+    rerunRate: rateForCount(aggregate.rerunCount, aggregate.count),
+    staleRate: rateForCount(aggregate.staleCount, aggregate.count),
+    rejectRate: rateForCount(aggregate.rejectCount, aggregate.count),
+    cheapSuccessRate: rateForCount(aggregate.cheapSuccessCount, aggregate.count),
+    expensiveSuccessRate: rateForCount(aggregate.expensiveSuccessCount, aggregate.count),
+    wasteRate: rateForCount(wasteCount, aggregate.count),
+    escalationBenefitRate: rateForCount(aggregate.escalationBenefitCount, aggregate.count),
+    missingPricingCount: aggregate.missingPricingCount,
+    missingPricingReasons: aggregate.missingPricingReasons.sort(),
+    runtimeMs: finalizeSwarmLifetimeRuntimeSummary(aggregate),
+    cost: finalizeSwarmLifetimeCostSummary(aggregate)
+  };
+}
+
+function finalizeSwarmLifetimePerformanceModelSummary(
+  aggregate: MutableSwarmLifetimePerformanceModelSummary
+): FrontierInspectSwarmLifetimePerformanceModelSummary {
+  return {
+    model: aggregate.model,
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate),
+    byComputeTier: Array.from(aggregate.byComputeTier.values())
+      .sort((left, right) => left.computeTier.localeCompare(right.computeTier))
+      .map((summary) => finalizeSwarmLifetimePerformanceComputeTierSummary(summary))
+  };
+}
+
+function finalizeSwarmLifetimePerformanceComputeTierSummary(
+  aggregate: MutableSwarmLifetimePerformanceComputeTierSummary
+): FrontierInspectSwarmLifetimePerformanceComputeTierSummary {
+  return {
+    model: aggregate.model,
+    computeTier: aggregate.computeTier,
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate),
+    byTaskKind: Array.from(aggregate.byTaskKind.values())
+      .sort((left, right) => left.taskKind.localeCompare(right.taskKind))
+      .map((summary) => finalizeSwarmLifetimePerformanceTaskKindSummary(summary))
+  };
+}
+
+function finalizeSwarmLifetimePerformanceTaskKindSummary(
+  aggregate: MutableSwarmLifetimePerformanceTaskKindSummary
+): FrontierInspectSwarmLifetimePerformanceTaskKindSummary {
+  return {
+    model: aggregate.model,
+    computeTier: aggregate.computeTier,
+    taskKind: aggregate.taskKind,
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate)
+  };
+}
+
+function finalizeSwarmLifetimeRuntimeSummary(
+  aggregate: MutableSwarmLifetimePerformanceAggregate
+): FrontierInspectSwarmLifetimeRuntimeSummary {
+  if (aggregate.runtimeCount === 0) return { count: 0 };
+  return {
+    count: aggregate.runtimeCount,
+    totalMs: aggregate.runtimeTotalMs,
+    averageMs: aggregate.runtimeTotalMs === undefined ? undefined : aggregate.runtimeTotalMs / aggregate.runtimeCount,
+    minMs: aggregate.runtimeMinMs,
+    maxMs: aggregate.runtimeMaxMs
+  };
+}
+
+function finalizeSwarmLifetimeCostSummary(
+  aggregate: MutableSwarmLifetimePerformanceAggregate
+): FrontierInspectSwarmLifetimeCostSummary | undefined {
+  const hasAnyCostData =
+    aggregate.inputTokens !== undefined ||
+    aggregate.cachedInputTokens !== undefined ||
+    aggregate.uncachedInputTokens !== undefined ||
+    aggregate.outputTokens !== undefined ||
+    aggregate.totalTokens !== undefined ||
+    aggregate.estimatedCostUsd !== undefined ||
+    aggregate.costKnownCount > 0;
+  if (!hasAnyCostData) return undefined;
+  return {
+    known: aggregate.costKnownCount > 0,
+    ...(aggregate.inputTokens !== undefined ? { inputTokens: aggregate.inputTokens } : {}),
+    ...(aggregate.cachedInputTokens !== undefined ? { cachedInputTokens: aggregate.cachedInputTokens } : {}),
+    ...(aggregate.uncachedInputTokens !== undefined ? { uncachedInputTokens: aggregate.uncachedInputTokens } : {}),
+    ...(aggregate.outputTokens !== undefined ? { outputTokens: aggregate.outputTokens } : {}),
+    ...(aggregate.totalTokens !== undefined ? { totalTokens: aggregate.totalTokens } : {}),
+    ...(aggregate.estimatedCostUsd !== undefined ? { estimatedCostUsd: roundUsd(aggregate.estimatedCostUsd) } : {}),
+    sourceCount: aggregate.sources.length,
+    sources: aggregate.sources.sort()
+  };
+}
+
+function roundUsd(value: number): number {
+  const rounded = Math.round((value + Number.EPSILON) * 1_000_000_000_000) / 1_000_000_000_000;
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+function rateForCount(count: number, total: number): number {
+  return total === 0 ? 0 : count / total;
 }
 
 interface SwarmLifetimeCostMetrics {
