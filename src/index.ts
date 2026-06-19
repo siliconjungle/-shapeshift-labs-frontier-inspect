@@ -45,6 +45,8 @@ export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND = 'frontier.inspect.s
 export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION = 1;
 export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND = 'frontier.inspect.swarm-lifetime-summary';
 export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_AUTONOMOUS_RUN_OUTCOME_SUMMARY_KIND = FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND;
+export const FRONTIER_INSPECT_AUTONOMOUS_RUN_OUTCOME_SUMMARY_VERSION = FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION;
 
 export type FrontierInspectArtifactKind =
   | 'registry-graph'
@@ -209,6 +211,8 @@ export interface FrontierInspectSwarmLifetimeSummary {
   version: typeof FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION;
   generatedAt: number;
   live: FrontierInspectSwarmLifetimeLiveSummary;
+  visibleOutcomeCount: number;
+  suppressedAuditArtifactCount: number;
   usefulOutputCount: number;
   cost?: FrontierInspectSwarmLifetimeCostSummary;
   sourcesScanned: FrontierInspectSwarmLifetimeSourcesScannedSummary;
@@ -217,9 +221,12 @@ export interface FrontierInspectSwarmLifetimeSummary {
 
 export interface FrontierInspectSwarmLifetimeLiveSummary {
   activeAgents: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  runOutcomes: FrontierInspectSwarmLifetimeRunOutcomeSummary;
   queueDepthByMeaning: FrontierInspectSwarmLifetimeQueueDepthSummary;
   reviewDebt: FrontierInspectSwarmLifetimeReviewDebtSummary;
   trueHumanQuestions: FrontierInspectSwarmLifetimeHumanQuestionSummary;
+  packageGates: FrontierInspectSwarmLifetimePackageGateSummary;
+  suppressedAuditArtifacts: FrontierInspectSwarmLifetimeSuppressedAuditArtifactSummary;
 }
 
 export interface FrontierInspectSwarmLifetimeLiveBucketSummary {
@@ -228,11 +235,37 @@ export interface FrontierInspectSwarmLifetimeLiveBucketSummary {
   sources: string[];
 }
 
+export interface FrontierInspectSwarmLifetimeRunOutcomeSummary {
+  completed: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  committedApplied: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  conflicts: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  reruns: FrontierInspectSwarmLifetimeLiveBucketSummary;
+}
+
+export interface FrontierInspectSwarmLifetimePackageGateSummary {
+  count: number;
+  ids: string[];
+  sources: string[];
+  states: string[];
+  requiredCount: number;
+  passedCount: number;
+  failedCount: number;
+  skippedCount: number;
+}
+
+export interface FrontierInspectSwarmLifetimeSuppressedAuditArtifactSummary extends FrontierInspectSwarmLifetimeLiveBucketSummary {
+  reasons: string[];
+}
+
 export interface FrontierInspectSwarmLifetimeQueueDepthSummary {
   activeWork: number;
   coordinatorReview: number;
   completedHistory: number;
+  committedApplied: number;
+  conflicts: number;
   rerunWork: number;
+  packageGates: number;
+  suppressedAuditArtifacts: number;
   realBlockers: number;
   humanQuestions: number;
 }
@@ -1416,32 +1449,49 @@ export function createInspectSwarmLifetimeSummary(bundle: FrontierInspectBundle)
   const activeAgents = collectSwarmLifetimeBucket(observations.active, {
     id: (observation) => extractSwarmLifetimeAgentId(observation) ?? observation.id
   });
+  const runOutcomes = collectSwarmLifetimeRunOutcomes(observations);
   const humanQuestions = collectSwarmLifetimeHumanQuestions(observations.humanQuestions);
   const reviewDebt = collectSwarmLifetimeReviewDebt(observations.review, observations.rerun);
+  const packageGates = collectSwarmLifetimePackageGates(observations.packageGateObservations);
+  const suppressedAuditArtifacts = collectSwarmLifetimeSuppressedAuditArtifacts(observations.suppressedAuditArtifacts);
   const queueDepthByMeaning = {
     activeWork: activeAgents.count,
     coordinatorReview: observations.review.length,
-    completedHistory: observations.completed.length,
+    completedHistory: runOutcomes.completed.count + runOutcomes.committedApplied.count,
+    committedApplied: runOutcomes.committedApplied.count,
+    conflicts: runOutcomes.conflicts.count,
     rerunWork: observations.rerun.length,
+    packageGates: packageGates.count,
+    suppressedAuditArtifacts: suppressedAuditArtifacts.count,
     realBlockers: observations.blocked.length,
     humanQuestions: humanQuestions.count
   };
   const cost = collectSwarmLifetimeCost(observations.costCandidates);
+  const visibleOutcomeCount = runOutcomes.completed.count + runOutcomes.committedApplied.count;
   return {
     kind: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND,
     version: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION,
     generatedAt: Date.now(),
     live: {
       activeAgents,
+      runOutcomes,
       queueDepthByMeaning,
       reviewDebt,
-      trueHumanQuestions: humanQuestions
+      trueHumanQuestions: humanQuestions,
+      packageGates,
+      suppressedAuditArtifacts
     },
-    usefulOutputCount: observations.completed.length,
+    visibleOutcomeCount,
+    suppressedAuditArtifactCount: suppressedAuditArtifacts.count,
+    usefulOutputCount: visibleOutcomeCount,
     cost,
     sourcesScanned: collectSwarmLifetimeSourcesScanned(bundle),
     archivedEvidence: summarizeInspectBundle(bundle)
   };
+}
+
+export function createInspectAutonomousRunOutcomeSummary(bundle: FrontierInspectBundle): FrontierInspectSwarmLifetimeSummary {
+  return createInspectSwarmLifetimeSummary(bundle);
 }
 
 export function summarizeInspectBundle(bundle: FrontierInspectBundle): FrontierInspectSummary {
@@ -2681,13 +2731,25 @@ function emptySummary(): FrontierInspectSummary {
   };
 }
 
-type SwarmLifetimeMeaning = 'active' | 'review' | 'rerun' | 'blocked' | 'completed' | 'human-question' | 'unknown';
+type SwarmLifetimeMeaning =
+  | 'active'
+  | 'review'
+  | 'rerun'
+  | 'conflict'
+  | 'blocked'
+  | 'committed-applied'
+  | 'completed'
+  | 'package-gate'
+  | 'human-question'
+  | 'suppressed-audit'
+  | 'unknown';
 
 interface SwarmLifetimeObservation {
   id: string;
   text: string;
   sources: string[];
   payloads: unknown[];
+  kind?: string;
   status?: string;
 }
 
@@ -2695,8 +2757,12 @@ interface SwarmLifetimeObservations {
   active: SwarmLifetimeObservation[];
   review: SwarmLifetimeObservation[];
   rerun: SwarmLifetimeObservation[];
+  conflicts: SwarmLifetimeObservation[];
   blocked: SwarmLifetimeObservation[];
+  committedApplied: SwarmLifetimeObservation[];
   completed: SwarmLifetimeObservation[];
+  packageGateObservations: SwarmLifetimeObservation[];
+  suppressedAuditArtifacts: SwarmLifetimeObservation[];
   humanQuestions: SwarmLifetimeObservation[];
   costCandidates: SwarmLifetimeObservation[];
 }
@@ -2706,8 +2772,12 @@ function collectSwarmLifetimeObservations(bundle: FrontierInspectBundle): SwarmL
     active: [],
     review: [],
     rerun: [],
+    conflicts: [],
     blocked: [],
+    committedApplied: [],
     completed: [],
+    packageGateObservations: [],
+    suppressedAuditArtifacts: [],
     humanQuestions: [],
     costCandidates: []
   };
@@ -2728,17 +2798,36 @@ function addSwarmLifetimeObservation(
   if (meaning === 'active') observations.active[observations.active.length] = observation;
   else if (meaning === 'review') observations.review[observations.review.length] = observation;
   else if (meaning === 'rerun') observations.rerun[observations.rerun.length] = observation;
+  else if (meaning === 'conflict') observations.conflicts[observations.conflicts.length] = observation;
   else if (meaning === 'blocked') observations.blocked[observations.blocked.length] = observation;
+  else if (meaning === 'committed-applied') observations.committedApplied[observations.committedApplied.length] = observation;
   else if (meaning === 'human-question') observations.humanQuestions[observations.humanQuestions.length] = observation;
   else if (meaning === 'completed') observations.completed[observations.completed.length] = observation;
+  else if (meaning === 'package-gate') observations.packageGateObservations[observations.packageGateObservations.length] = observation;
+  else if (meaning === 'suppressed-audit') observations.suppressedAuditArtifacts[observations.suppressedAuditArtifacts.length] = observation;
+}
+
+function collectSwarmLifetimeRunOutcomes(
+  observations: SwarmLifetimeObservations
+): FrontierInspectSwarmLifetimeRunOutcomeSummary {
+  return {
+    completed: collectSwarmLifetimeBucket(observations.completed),
+    committedApplied: collectSwarmLifetimeBucket(observations.committedApplied),
+    conflicts: collectSwarmLifetimeBucket(observations.conflicts),
+    reruns: collectSwarmLifetimeBucket(observations.rerun)
+  };
 }
 
 function classifySwarmLifetimeMeaning(observation: SwarmLifetimeObservation): SwarmLifetimeMeaning {
   const text = observation.text.toLowerCase();
   if (looksLikeTrueHumanQuestion(text, observation.status, observation.payloads)) return 'human-question';
+  if (looksLikeSuppressedAuditArtifact(text, observation.kind, observation.status, observation.payloads)) return 'suppressed-audit';
+  if (looksLikePackageGate(text, observation.kind, observation.status, observation.payloads)) return 'package-gate';
   if (looksLikeActiveWork(text, observation.status, observation.payloads)) return 'active';
   if (looksLikeCoordinatorReview(text, observation.status, observation.payloads)) return 'review';
   if (looksLikeRerunWork(text, observation.status, observation.payloads)) return 'rerun';
+  if (looksLikeConflictWork(text, observation.status, observation.payloads)) return 'conflict';
+  if (looksLikeCommittedApplied(text, observation.status, observation.payloads)) return 'committed-applied';
   if (looksLikeCompletedHistory(text, observation.status, observation.payloads)) return 'completed';
   if (looksLikeBlockedWork(text, observation.status, observation.payloads)) return 'blocked';
   return 'unknown';
@@ -2748,6 +2837,32 @@ function looksLikeTrueHumanQuestion(text: string, status: string | undefined, pa
   if (status !== undefined && /human[-\s]?blocked|human[-\s]?question/.test(status.toLowerCase())) return true;
   if (/human-question:/.test(text) || /human question/.test(text)) return true;
   return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['reason', 'question', 'missingAuthority', 'missing-authority'], /human-question:|human question/i));
+}
+
+function looksLikeSuppressedAuditArtifact(
+  text: string,
+  kind: string | undefined,
+  status: string | undefined,
+  payloads: readonly unknown[]
+): boolean {
+  if (kind !== undefined && /(?:audit|collection|intermediate|record-only|discovery|snapshot|archive)/i.test(kind)) return true;
+  if (status !== undefined && /^(stale-against-head|record-only|discovery|audit|intermediate)$/i.test(status)) return true;
+  if (/\b(?:audit|collection|intermediate|record-only|discovery|suppressed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['kind', 'phase', 'state', 'status', 'summary', 'reason'], /(?:stale-against-head|record-only|discovery|audit|intermediate|collection|suppressed)/i));
+}
+
+function looksLikePackageGate(
+  text: string,
+  kind: string | undefined,
+  status: string | undefined,
+  payloads: readonly unknown[]
+): boolean {
+  if (kind !== undefined && /(?:gate|verification|check)/i.test(kind)) return true;
+  if (status !== undefined && /^(passed|failed|skipped)$/i.test(status)) {
+    return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['package', 'packageName', 'packageId', 'packagePath', 'name', 'gate'], /package/i));
+  }
+  if (!/\bpackage\b/.test(text) || !/\bgate\b/.test(text)) return false;
+  return payloads.some((payload) => collectSwarmLifetimeGateRecords(payload).length > 0);
 }
 
 function looksLikeActiveWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
@@ -2763,15 +2878,27 @@ function looksLikeCoordinatorReview(text: string, status: string | undefined, pa
 }
 
 function looksLikeRerunWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
-  if (status !== undefined && /^(rerun|conflict-blocked|stale-against-head|stale)$/i.test(status)) return true;
-  if (/\b(rerun|conflict-blocked|stale-against-head|stale|rebase)\b/.test(text)) return true;
-  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(rerun|conflict-blocked|stale-against-head|stale)$/i));
+  if (status !== undefined && /^(rerun|stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(rerun|stale-against-head|stale|rebase)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(rerun|stale-against-head|stale)$/i));
+}
+
+function looksLikeConflictWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i.test(status)) return true;
+  if (/\b(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i));
+}
+
+function looksLikeCommittedApplied(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(applied|committed)$/i.test(status)) return true;
+  if (/\b(applied|committed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(applied|committed)$/i));
 }
 
 function looksLikeCompletedHistory(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
-  if (status !== undefined && /^(ok|changed|applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i.test(status)) return true;
-  if (/\b(ok|changed|applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)\b/.test(text)) return true;
-  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(ok|changed|applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i));
+  if (status !== undefined && /^(ok|changed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i.test(status)) return true;
+  if (/\b(ok|changed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(ok|changed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i));
 }
 
 function looksLikeBlockedWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
@@ -2799,6 +2926,7 @@ function swarmObservationFromArtifact(artifact: FrontierInspectArtifact): SwarmL
       artifact.entryIds.join(' '),
       artifact.recordIds.join(' ')
     ].filter(Boolean).join(' '),
+    kind: artifact.kind,
     sources: collectSwarmLifetimeSources(artifact.sourcePackage, artifact.package, artifact.files, artifact.resources),
     payloads,
     status: extractSwarmLifetimeStatus(payloads)
@@ -2829,6 +2957,7 @@ function swarmObservationFromEvent(event: FrontierInspectEvent): SwarmLifetimeOb
   return {
     id: event.id,
     text,
+    kind: event.type,
     sources: collectSwarmLifetimeSources(event.sourcePackage, event.package, [event.file], [event.resource, event.path, event.routeId, event.selector]),
     payloads,
     status: event.status ?? extractSwarmLifetimeStatus(payloads)
@@ -2852,6 +2981,7 @@ function swarmObservationFromEntry(entry: FrontierRegistryEntry): SwarmLifetimeO
       (entry.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
       (entry.dependsOn ?? []).join(' ')
     ].filter(Boolean).join(' '),
+    kind: entry.kind,
     sources: collectSwarmLifetimeSources(entry.package, undefined, normalizeSourceFiles(entry), entry.touches),
     payloads,
     status: extractSwarmLifetimeStatus(payloads)
@@ -2872,6 +3002,7 @@ function swarmObservationFromRecord(record: FrontierRegistryRecord): SwarmLifeti
       (record.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
       (record.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' ')
     ].filter(Boolean).join(' '),
+    kind: record.kind,
     sources: collectSwarmLifetimeSources(undefined, undefined, [], []),
     payloads,
     status: record.status ?? extractSwarmLifetimeStatus(payloads)
@@ -3009,6 +3140,69 @@ function extractSwarmLifetimeQuestionReasons(observation: SwarmLifetimeObservati
   return reasons;
 }
 
+function collectSwarmLifetimePackageGates(
+  observations: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimePackageGateSummary {
+  const ids: string[] = [];
+  const sources: string[] = [];
+  const states: string[] = [];
+  let requiredCount = 0;
+  let passedCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  const seen = new Set<string>();
+  for (const observation of observations) {
+    for (const payload of observation.payloads) {
+      const gates = collectSwarmLifetimeGateRecords(payload);
+      if (gates.length === 0) continue;
+      for (const gate of gates) {
+        const key = observation.id + '|' + gate.id + '|' + (gate.state ?? '') + '|' + String(gate.required ?? '');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        addUnique(ids, gate.id);
+        for (const source of observation.sources) addUnique(sources, source);
+        if (gate.state !== undefined) addUnique(states, gate.state);
+        if (gate.required === true) requiredCount++;
+        if (gate.state === 'passed') passedCount++;
+        else if (gate.state === 'failed') failedCount++;
+        else if (gate.state === 'skipped') skippedCount++;
+      }
+    }
+  }
+  return {
+    count: ids.length,
+    ids: ids.sort(),
+    sources: sources.sort(),
+    states: states.sort(),
+    requiredCount,
+    passedCount,
+    failedCount,
+    skippedCount
+  };
+}
+
+function collectSwarmLifetimeSuppressedAuditArtifacts(
+  observations: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimeSuppressedAuditArtifactSummary {
+  const bucket = collectSwarmLifetimeBucket(observations);
+  const reasons = uniqueStrings(observations.flatMap((observation) => extractSwarmLifetimeSuppressedAuditReasons(observation)));
+  return {
+    ...bucket,
+    reasons
+  };
+}
+
+function extractSwarmLifetimeSuppressedAuditReasons(observation: SwarmLifetimeObservation): string[] {
+  const reasons: string[] = [];
+  if (observation.kind !== undefined) addUnique(reasons, observation.kind);
+  if (observation.status !== undefined) addUnique(reasons, observation.status);
+  for (const payload of observation.payloads) {
+    const directReason = extractSwarmLifetimeStringField(payload, ['reason', 'summary', 'message', 'kind', 'status', 'state']);
+    if (directReason !== undefined) addUnique(reasons, directReason);
+  }
+  return reasons;
+}
+
 function collectSwarmLifetimeReviewDebt(
   review: readonly SwarmLifetimeObservation[],
   rerun: readonly SwarmLifetimeObservation[]
@@ -3022,6 +3216,89 @@ function collectSwarmLifetimeReviewDebt(
     ids,
     sources
   };
+}
+
+interface SwarmLifetimeGateRecord {
+  id: string;
+  state?: string;
+  required?: boolean;
+}
+
+function collectSwarmLifetimeGateRecords(value: unknown): SwarmLifetimeGateRecord[] {
+  const records: SwarmLifetimeGateRecord[] = [];
+  collectSwarmLifetimeGateRecordsInto(value, records);
+  return records;
+}
+
+function collectSwarmLifetimeGateRecordsInto(value: unknown, records: SwarmLifetimeGateRecord[]): void {
+  if (!isRecord(value)) return;
+  const gateSources = [
+    value,
+    value.finalGateSummary,
+    value.gateSummary,
+    value.verification,
+    value.gates
+  ];
+  for (const source of gateSources) {
+    if (!isRecord(source)) continue;
+    const directGate = extractSwarmLifetimeGateRecord(source);
+    if (directGate !== undefined) records[records.length] = directGate;
+    const nestedGates = source.gates;
+    if (Array.isArray(nestedGates)) {
+      for (const gate of nestedGates) {
+        const nestedGate = extractSwarmLifetimeGateRecord(gate);
+        if (nestedGate !== undefined) records[records.length] = nestedGate;
+      }
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) collectSwarmLifetimeGateRecordsInto(item, records);
+      continue;
+    }
+    if (isRecord(child)) collectSwarmLifetimeGateRecordsInto(child, records);
+  }
+}
+
+function extractSwarmLifetimeGateRecord(value: unknown): SwarmLifetimeGateRecord | undefined {
+  if (!isRecord(value)) return undefined;
+  const id = extractSwarmLifetimeStringField(value, ['id', 'name', 'gate', 'label', 'title']);
+  const state = extractSwarmLifetimeStringField(value, ['status', 'state', 'resultStatus', 'outcome', 'phase']);
+  const required = extractSwarmLifetimeBooleanField(value, ['required', 'mandatory']);
+  if (id === undefined && state === undefined && required === undefined) return undefined;
+  return {
+    id: id ?? state ?? 'gate',
+    state,
+    required
+  };
+}
+
+function extractSwarmLifetimeBooleanField(value: unknown, keys: readonly string[]): boolean | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'boolean') return raw;
+    if (typeof raw === 'string') {
+      if (/^(true|yes|required|required-gate|mandatory)$/i.test(raw)) return true;
+      if (/^(false|no|optional)$/i.test(raw)) return false;
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractSwarmLifetimeBooleanField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractSwarmLifetimeBooleanField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
 }
 
 function collectSwarmLifetimeCost(observations: readonly SwarmLifetimeObservation[]): FrontierInspectSwarmLifetimeCostSummary | undefined {

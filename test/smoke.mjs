@@ -11,7 +11,7 @@ import {
   createInspectBundle,
   createInspectFeatureMap,
   createInspectProof,
-  createInspectSwarmLifetimeSummary,
+  createInspectAutonomousRunOutcomeSummary,
   createInspectReport,
   decodeInspectJsonl,
   encodeInspectJsonl,
@@ -211,18 +211,18 @@ const swarmLifetimeBundle = createInspectBundle({
       }
     },
     {
-      id: 'artifact:worker:useful',
+      id: 'artifact:worker:completed',
       kind: 'worker-result',
       sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
       package: '@shapeshift-labs/frontier-swarm-codex',
       feature: 'inspect',
       summary: 'completed worker output',
-      files: ['workers/useful-worker.json'],
-      resources: ['run:worker-useful'],
+      files: ['workers/completed-worker.json'],
+      resources: ['run:worker-completed'],
       data: {
-        jobId: 'job:worker-useful',
-        taskId: 'task:worker-useful',
-        status: 'committed',
+        jobId: 'job:worker-completed',
+        taskId: 'task:worker-completed',
+        status: 'completed',
         usage: {
           inputTokens: 12,
           outputTokens: 4,
@@ -231,6 +231,63 @@ const swarmLifetimeBundle = createInspectBundle({
         cost: {
           estimatedCostUsd: 0.08
         }
+      }
+    },
+    {
+      id: 'artifact:worker:committed',
+      kind: 'worker-result',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'committed worker output',
+      files: ['workers/committed-worker.json'],
+      resources: ['run:worker-committed'],
+      data: {
+        jobId: 'job:worker-committed',
+        taskId: 'task:worker-committed',
+        status: 'committed',
+        usage: {
+          inputTokens: 9,
+          outputTokens: 5,
+          totalTokens: 14
+        },
+        cost: {
+          estimatedCostUsd: 0.06
+        }
+      }
+    },
+    {
+      id: 'artifact:gate:package',
+      kind: 'coordinator-gate',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'package gates for drained run',
+      files: ['auto-drain/package-gates.json'],
+      resources: ['gate:packages/frontier-inspect'],
+      data: {
+        package: '@shapeshift-labs/frontier-inspect',
+        finalGateSummary: {
+          gates: [
+            { name: 'packages/frontier-inspect test', required: true, status: 'passed' },
+            { name: 'packages/frontier-inspect lint', required: true, status: 'failed' }
+          ]
+        }
+      }
+    },
+    {
+      id: 'artifact:audit:stale-collection-row',
+      kind: 'collection-row',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      summary: 'stale intermediate collection row',
+      files: ['auto-drain/coordinator-review/stale-row.json'],
+      resources: ['collection:coordinator-review'],
+      data: {
+        status: 'stale-against-head',
+        kind: 'collection-row',
+        summary: 'stale intermediate collection row'
       }
     }
   ],
@@ -270,6 +327,23 @@ const swarmLifetimeBundle = createInspectBundle({
       }
     },
     {
+      id: 'event:conflict',
+      type: 'decision',
+      label: 'conflict blocked worker',
+      source: 'swarm',
+      sourcePackage: '@shapeshift-labs/frontier-swarm-codex',
+      package: '@shapeshift-labs/frontier-swarm-codex',
+      feature: 'inspect',
+      status: 'conflict-blocked',
+      resource: 'conflict-work',
+      value: {
+        decisionId: 'decision:conflict',
+        jobId: 'job:conflict',
+        taskId: 'task:conflict',
+        status: 'conflict-blocked'
+      }
+    },
+    {
       id: 'event:question',
       type: 'decision',
       label: 'human question',
@@ -289,27 +363,45 @@ const swarmLifetimeBundle = createInspectBundle({
   ]
 });
 
-const swarmLifetimeSummary = createInspectSwarmLifetimeSummary(swarmLifetimeBundle);
+const swarmLifetimeSummary = createInspectAutonomousRunOutcomeSummary(swarmLifetimeBundle);
 assert.strictEqual(swarmLifetimeSummary.kind, 'frontier.inspect.swarm-lifetime-summary');
 assert.strictEqual(swarmLifetimeSummary.live.activeAgents.count, 1);
 assert.ok(swarmLifetimeSummary.live.activeAgents.ids.includes('worker-17'));
 assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.activeWork, 1);
 assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.coordinatorReview, 1);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.completedHistory, 2);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.committedApplied, 1);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.conflicts, 1);
 assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.rerunWork, 1);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.packageGates, 2);
+assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.suppressedAuditArtifacts, 1);
 assert.strictEqual(swarmLifetimeSummary.live.queueDepthByMeaning.humanQuestions, 1);
 assert.strictEqual(swarmLifetimeSummary.live.reviewDebt.count, 2);
 assert.strictEqual(swarmLifetimeSummary.live.trueHumanQuestions.count, 1);
 assert.ok(swarmLifetimeSummary.live.trueHumanQuestions.reasons.some((reason) => reason.startsWith('human-question:')));
-assert.strictEqual(swarmLifetimeSummary.usefulOutputCount, 1);
+assert.strictEqual(swarmLifetimeSummary.live.runOutcomes.completed.count, 1);
+assert.strictEqual(swarmLifetimeSummary.live.runOutcomes.committedApplied.count, 1);
+assert.strictEqual(swarmLifetimeSummary.live.runOutcomes.conflicts.count, 1);
+assert.strictEqual(swarmLifetimeSummary.live.runOutcomes.reruns.count, 1);
+assert.strictEqual(swarmLifetimeSummary.live.packageGates.count, 2);
+assert.deepStrictEqual(swarmLifetimeSummary.live.packageGates.states, ['failed', 'passed']);
+assert.strictEqual(swarmLifetimeSummary.live.packageGates.requiredCount, 2);
+assert.strictEqual(swarmLifetimeSummary.live.packageGates.failedCount, 1);
+assert.strictEqual(swarmLifetimeSummary.live.packageGates.passedCount, 1);
+assert.strictEqual(swarmLifetimeSummary.live.suppressedAuditArtifacts.count, 1);
+assert.ok(swarmLifetimeSummary.live.suppressedAuditArtifacts.reasons.some((reason) => reason.includes('collection')));
+assert.strictEqual(swarmLifetimeSummary.visibleOutcomeCount, 2);
+assert.strictEqual(swarmLifetimeSummary.suppressedAuditArtifactCount, 1);
+assert.strictEqual(swarmLifetimeSummary.usefulOutputCount, 2);
 assert.strictEqual(swarmLifetimeSummary.cost?.known, true);
-assert.strictEqual(swarmLifetimeSummary.cost?.inputTokens, 132);
-assert.strictEqual(swarmLifetimeSummary.cost?.outputTokens, 34);
-assert.strictEqual(swarmLifetimeSummary.cost?.totalTokens, 166);
-assert.strictEqual(swarmLifetimeSummary.cost?.estimatedCostUsd, 0.5);
+assert.strictEqual(swarmLifetimeSummary.cost?.inputTokens, 141);
+assert.strictEqual(swarmLifetimeSummary.cost?.outputTokens, 39);
+assert.strictEqual(swarmLifetimeSummary.cost?.totalTokens, 180);
+assert.strictEqual(swarmLifetimeSummary.cost?.estimatedCostUsd, 0.56);
 assert.ok(swarmLifetimeSummary.sourcesScanned.packages.includes('@shapeshift-labs/frontier-swarm-codex'));
 assert.ok(swarmLifetimeSummary.sourcesScanned.files.includes('workers/active-worker.json'));
-assert.ok(swarmLifetimeSummary.archivedEvidence.artifactCount >= 2);
-assert.ok(swarmLifetimeSummary.archivedEvidence.eventCount >= 3);
+assert.ok(swarmLifetimeSummary.archivedEvidence.artifactCount >= 5);
+assert.ok(swarmLifetimeSummary.archivedEvidence.eventCount >= 4);
 
 const bundle = createInspectBundle({
   id: 'inspect:smoke',
