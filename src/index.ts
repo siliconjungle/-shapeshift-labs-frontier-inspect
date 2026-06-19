@@ -41,6 +41,12 @@ export const FRONTIER_INSPECT_PROOF_KIND = 'frontier.inspect.proof';
 export const FRONTIER_INSPECT_PROOF_VERSION = 1;
 export const FRONTIER_INSPECT_JSONL_KIND = 'frontier.inspect.jsonl';
 export const FRONTIER_INSPECT_JSONL_VERSION = 1;
+export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND = 'frontier.inspect.semantic-merge-evidence';
+export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION = 1;
+export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND = 'frontier.inspect.swarm-lifetime-summary';
+export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_AUTONOMOUS_RUN_OUTCOME_SUMMARY_KIND = FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND;
+export const FRONTIER_INSPECT_AUTONOMOUS_RUN_OUTCOME_SUMMARY_VERSION = FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION;
 
 export type FrontierInspectArtifactKind =
   | 'registry-graph'
@@ -48,11 +54,17 @@ export type FrontierInspectArtifactKind =
   | 'playwright-sample'
   | 'playwright-report'
   | 'event-log'
+  | 'event-log-records'
+  | 'route-manifest'
   | 'route-impact'
   | 'migration'
+  | 'migration-report'
   | 'benchmark'
+  | 'benchmark-report'
   | 'test'
+  | 'semantic-merge-evidence'
   | 'telemetry'
+  | 'log-records'
   | string;
 
 export type FrontierInspectEventSeverity = 'debug' | 'info' | 'warning' | 'error' | string;
@@ -192,6 +204,160 @@ export interface FrontierInspectSummary {
   fileCount: number;
   resourceCount: number;
   errorCount: number;
+}
+
+export interface FrontierInspectSwarmLifetimeSummary {
+  kind: typeof FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION;
+  generatedAt: number;
+  live: FrontierInspectSwarmLifetimeLiveSummary;
+  visibleOutcomeCount: number;
+  suppressedAuditArtifactCount: number;
+  usefulOutputCount: number;
+  cost?: FrontierInspectSwarmLifetimeCostSummary;
+  modelPerformance: FrontierInspectSwarmLifetimeModelPerformanceSummary;
+  sourcesScanned: FrontierInspectSwarmLifetimeSourcesScannedSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectSwarmLifetimeLiveSummary {
+  activeAgents: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  runOutcomes: FrontierInspectSwarmLifetimeRunOutcomeSummary;
+  queueDepthByMeaning: FrontierInspectSwarmLifetimeQueueDepthSummary;
+  reviewDebt: FrontierInspectSwarmLifetimeReviewDebtSummary;
+  trueHumanQuestions: FrontierInspectSwarmLifetimeHumanQuestionSummary;
+  packageGates: FrontierInspectSwarmLifetimePackageGateSummary;
+  suppressedAuditArtifacts: FrontierInspectSwarmLifetimeSuppressedAuditArtifactSummary;
+}
+
+export interface FrontierInspectSwarmLifetimeLiveBucketSummary {
+  count: number;
+  ids: string[];
+  sources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeRunOutcomeSummary {
+  completed: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  committedApplied: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  conflicts: FrontierInspectSwarmLifetimeLiveBucketSummary;
+  reruns: FrontierInspectSwarmLifetimeLiveBucketSummary;
+}
+
+export interface FrontierInspectSwarmLifetimePackageGateSummary {
+  count: number;
+  ids: string[];
+  sources: string[];
+  states: string[];
+  requiredCount: number;
+  passedCount: number;
+  failedCount: number;
+  skippedCount: number;
+}
+
+export interface FrontierInspectSwarmLifetimeSuppressedAuditArtifactSummary extends FrontierInspectSwarmLifetimeLiveBucketSummary {
+  reasons: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeQueueDepthSummary {
+  activeWork: number;
+  coordinatorReview: number;
+  completedHistory: number;
+  committedApplied: number;
+  conflicts: number;
+  rerunWork: number;
+  packageGates: number;
+  suppressedAuditArtifacts: number;
+  realBlockers: number;
+  humanQuestions: number;
+}
+
+export interface FrontierInspectSwarmLifetimeReviewDebtSummary {
+  count: number;
+  coordinatorReviewCount: number;
+  rerunWorkCount: number;
+  ids: string[];
+  sources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeHumanQuestionSummary extends FrontierInspectSwarmLifetimeLiveBucketSummary {
+  reasons: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeCostSummary {
+  known: boolean;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  sourceCount: number;
+  sources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeSourcesScannedSummary {
+  count: number;
+  packages: string[];
+  files: string[];
+  resources: string[];
+}
+
+export interface FrontierInspectSwarmLifetimeRuntimeSummary {
+  count: number;
+  totalMs?: number;
+  averageMs?: number;
+  minMs?: number;
+  maxMs?: number;
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  count: number;
+  successCount: number;
+  usefulOutputCount: number;
+  rerunCount: number;
+  staleCount: number;
+  rejectCount: number;
+  cheapSuccessCount: number;
+  expensiveSuccessCount: number;
+  wasteCount: number;
+  escalationBenefitCount: number;
+  successRate: number;
+  usefulOutputRate: number;
+  rerunRate: number;
+  staleRate: number;
+  rejectRate: number;
+  cheapSuccessRate: number;
+  expensiveSuccessRate: number;
+  wasteRate: number;
+  escalationBenefitRate: number;
+  missingPricingCount: number;
+  missingPricingReasons: string[];
+  runtimeMs: FrontierInspectSwarmLifetimeRuntimeSummary;
+  cost?: FrontierInspectSwarmLifetimeCostSummary;
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceTaskKindSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  computeTier: string;
+  taskKind: string;
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceComputeTierSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  computeTier: string;
+  byTaskKind: FrontierInspectSwarmLifetimePerformanceTaskKindSummary[];
+}
+
+export interface FrontierInspectSwarmLifetimePerformanceModelSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  model: string;
+  byComputeTier: FrontierInspectSwarmLifetimePerformanceComputeTierSummary[];
+}
+
+export interface FrontierInspectSwarmLifetimeModelPerformanceSummary extends FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  modelCount: number;
+  computeTierCount: number;
+  taskKindCount: number;
+  byModel: FrontierInspectSwarmLifetimePerformanceModelSummary[];
 }
 
 export interface FrontierInspectQueryInput extends FrontierRegistryQueryInput {
@@ -386,14 +552,315 @@ export interface FrontierInspectPlaywrightMarkLike {
   data?: unknown;
 }
 
+export interface FrontierInspectRouteManifestLike {
+  kind?: string;
+  version?: number;
+  generatedAt?: FrontierInspectTimestamp;
+  routes?: readonly FrontierInspectRouteEntryLike[];
+  transitions?: readonly FrontierInspectRouteTransitionLike[];
+  diagnostics?: readonly FrontierInspectDiagnosticLike[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectRouteEntryLike {
+  id: string;
+  kind?: string;
+  resource?: string;
+  pattern?: string;
+  parentId?: string;
+  title?: string;
+  feature?: string;
+  owner?: string;
+  package?: string;
+  source?: FrontierInspectSourceLike | readonly FrontierInspectSourceLike[];
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  loads?: readonly (string | FrontierInspectDescriptorLike)[];
+  emits?: readonly string[];
+  guards?: readonly (string | FrontierInspectDescriptorLike)[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectRouteTransitionLike {
+  id?: string;
+  from?: string | readonly string[];
+  to: string;
+  kind?: string;
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  loads?: readonly (string | FrontierInspectDescriptorLike)[];
+  emits?: readonly string[];
+  guards?: readonly (string | FrontierInspectDescriptorLike)[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectRouteImpactLike {
+  kind?: string;
+  version?: number;
+  seeds?: readonly string[];
+  routeIds?: readonly string[];
+  transitionIds?: readonly string[];
+  routes?: readonly FrontierInspectRouteEntryLike[];
+  transitions?: readonly FrontierInspectRouteTransitionLike[];
+  resources?: readonly string[];
+  paths?: readonly string[];
+  reads?: readonly string[];
+  writes?: readonly string[];
+  loads?: readonly string[];
+  guards?: readonly string[];
+  emits?: readonly string[];
+  files?: readonly string[];
+  features?: readonly string[];
+  packages?: readonly string[];
+  tags?: readonly string[];
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectMigrationReportLike {
+  kind?: string;
+  registryId?: string;
+  source?: string;
+  plugin?: string;
+  api?: string;
+  actor?: string;
+  fromVersion?: string | number;
+  toVersion?: string | number;
+  targetVersion?: string | number;
+  changed?: boolean;
+  dryRun?: boolean;
+  stepCount?: number;
+  steps?: readonly FrontierInspectMigrationStepLike[];
+  warnings?: readonly FrontierInspectDiagnosticLike[];
+  elapsedMs?: number;
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectMigrationStepLike {
+  id: string;
+  from?: string | number;
+  to?: string | number;
+  direction?: string;
+  checksum?: string;
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  elapsedMs?: number;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectDiagnosticLike {
+  severity?: FrontierInspectEventSeverity;
+  code?: string;
+  message?: string;
+  routeId?: string;
+  transitionId?: string;
+  stepId?: string;
+  path?: FrontierRegistryPath;
+  detail?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectLogRecordLike {
+  time?: number;
+  observedTime?: number;
+  level?: string;
+  severityNumber?: number;
+  name?: string;
+  message?: string;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  durationMs?: number;
+  resource?: Record<string, unknown>;
+  scope?: string;
+  attributes?: Record<string, unknown>;
+  telemetry?: Record<string, unknown>;
+  patch?: Record<string, unknown>;
+  crdt?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectEventLogRecordLike {
+  offset?: number;
+  timestamp?: number;
+  key?: string;
+  value?: unknown;
+  headers?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectBenchmarkReportLike {
+  package?: string;
+  version?: string;
+  generatedAt?: FrontierInspectTimestamp;
+  entryCount?: number;
+  rounds?: number;
+  rows?: readonly FrontierInspectBenchmarkRowLike[];
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectBenchmarkRowLike {
+  fixture?: string;
+  name?: string;
+  medianUs?: number;
+  p95Us?: number;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export type FrontierInspectSemanticMergeDecision =
+  | 'accepted'
+  | 'rejected'
+  | 'needs-review'
+  | 'conflict'
+  | 'merged'
+  | string;
+
+export type FrontierInspectSemanticMergeStatus = 'ok' | 'changed' | 'pending' | 'error' | string;
+
+export interface FrontierInspectSemanticMergeEvidenceLike {
+  kind?: string;
+  version?: number;
+  id?: string;
+  generatedAt?: FrontierInspectTimestamp;
+  mergeId?: string;
+  bundleId?: string;
+  source?: string;
+  sourcePackage?: string;
+  feature?: string;
+  package?: string;
+  summary?: string;
+  changedPaths?: readonly FrontierRegistryPath[];
+  paths?: readonly FrontierRegistryPath[];
+  changedFiles?: readonly string[];
+  files?: readonly string[];
+  semanticRegions?: readonly FrontierInspectSemanticRegionLike[];
+  regions?: readonly FrontierInspectSemanticRegionLike[];
+  decision?: FrontierInspectSemanticMergeDecision;
+  status?: FrontierInspectSemanticMergeStatus;
+  proofLinks?: readonly FrontierInspectProofLinkLike[];
+  proofs?: readonly FrontierInspectProofLinkLike[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectSemanticRegionLike {
+  id?: string;
+  kind?: string;
+  label?: string;
+  file?: string;
+  path?: FrontierRegistryPath;
+  symbol?: string;
+  startLine?: number;
+  startColumn?: number;
+  endLine?: number;
+  endColumn?: number;
+  feature?: string;
+  package?: string;
+  owner?: string;
+  reads?: readonly FrontierRegistryPath[];
+  writes?: readonly FrontierRegistryPath[];
+  tags?: readonly string[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectSemanticRegion {
+  id: string;
+  kind: string;
+  label?: string;
+  file?: string;
+  path?: string;
+  symbol?: string;
+  startLine?: number;
+  startColumn?: number;
+  endLine?: number;
+  endColumn?: number;
+  feature?: string;
+  package?: string;
+  owner?: string;
+  reads: string[];
+  writes: string[];
+  tags: string[];
+  metadata?: JsonObject;
+}
+
+export interface FrontierInspectProofLinkLike {
+  id?: string;
+  kind?: string;
+  label?: string;
+  href?: string;
+  uri?: string;
+  url?: string;
+  path?: string;
+  hash?: string;
+  status?: FrontierInspectSemanticMergeStatus;
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
+export interface FrontierInspectProofLink {
+  id: string;
+  kind?: string;
+  label?: string;
+  href?: string;
+  path?: string;
+  hash?: string;
+  status?: string;
+  metadata?: JsonObject;
+}
+
+export interface FrontierInspectSourceLike {
+  file: string;
+  line?: number;
+  column?: number;
+  symbol?: string;
+  exportName?: string;
+  package?: string;
+}
+
+export interface FrontierInspectDescriptorLike {
+  id?: string;
+  kind?: string;
+  resource?: string;
+  reads?: readonly FrontierRegistryPath[];
+  metadata?: unknown;
+  [key: string]: unknown;
+}
+
 interface FrontierInspectBundleIndex {
   registry: FrontierRegistryIndex;
   artifactsById: Map<string, FrontierInspectArtifact>;
   eventsById: Map<string, FrontierInspectEvent>;
+  artifactOrder: Map<string, number>;
+  eventOrder: Map<string, number>;
+  artifactIdsByKind: Map<string, Set<string>>;
+  artifactIdsBySourcePackage: Map<string, Set<string>>;
+  artifactIdsByPackage: Map<string, Set<string>>;
+  artifactIdsByFeature: Map<string, Set<string>>;
+  artifactIdsByTag: Map<string, Set<string>>;
+  artifactIdsByFile: Map<string, Set<string>>;
+  artifactIdsByPath: Map<string, Set<string>>;
+  artifactIdsByResource: Map<string, Set<string>>;
   artifactIdsByEntryId: Map<string, Set<string>>;
   eventIdsByEntryId: Map<string, Set<string>>;
   artifactIdsByRecordId: Map<string, Set<string>>;
   eventIdsByRecordId: Map<string, Set<string>>;
+  eventIdsBySourcePackage: Map<string, Set<string>>;
+  eventIdsByPackage: Map<string, Set<string>>;
+  eventIdsByFeature: Map<string, Set<string>>;
+  eventIdsByTag: Map<string, Set<string>>;
+  eventIdsByFile: Map<string, Set<string>>;
+  eventIdsByPath: Map<string, Set<string>>;
+  eventIdsByResource: Map<string, Set<string>>;
+  eventIdsByStatus: Map<string, Set<string>>;
+  eventIdsBySeverity: Map<string, Set<string>>;
 }
 
 const bundleIndexes = new WeakMap<FrontierInspectBundle, FrontierInspectBundleIndex>();
@@ -471,6 +938,344 @@ export function createInspectArtifactsFromPlaywrightTimeline(
   return normalizeArtifact({ ...options, kind: 'timeline', timeline }, 0);
 }
 
+export function createInspectArtifactFromRouteManifest(
+  manifest: FrontierInspectRouteManifestLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const entries = routeEntriesFromManifest(manifest, options);
+  const diagnostics = eventsFromDiagnostics(manifest.diagnostics ?? [], 'route', options);
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:route-manifest',
+    kind: 'route-manifest',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-route',
+    timestamp: options.timestamp ?? manifest.generatedAt,
+    tags: uniqueStrings((options.tags ?? []).concat(['route'])),
+    graph: { entries },
+    files: unionArray(options.files, filesFromRouteManifest(manifest)),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), pathsFromRouteManifest(manifest)),
+    resources: unionArray(options.resources, resourcesFromRouteManifest(manifest)),
+    events: diagnostics,
+    data: toJsonValue({
+      kind: manifest.kind ?? 'frontier.route.manifest',
+      version: manifest.version,
+      routeCount: manifest.routes?.length ?? 0,
+      transitionCount: manifest.transitions?.length ?? 0,
+      diagnosticCount: manifest.diagnostics?.length ?? 0
+    }),
+    metadata: mergeMetadata(options.metadata, manifest.metadata)
+  }, 0);
+}
+
+export function createInspectArtifactFromRouteImpact(
+  impact: FrontierInspectRouteImpactLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const manifest: FrontierInspectRouteManifestLike = {
+    routes: impact.routes ?? [],
+    transitions: impact.transitions ?? []
+  };
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:route-impact',
+    kind: 'route-impact',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-route',
+    feature: options.feature ?? singletonOrUndefined(impact.features),
+    package: options.package ?? singletonOrUndefined(impact.packages),
+    tags: uniqueStrings((options.tags ?? []).concat(impact.tags ?? [], ['route-impact'])),
+    graph: { entries: routeEntriesFromManifest(manifest, options) },
+    files: unionArray(options.files, impact.files),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), impact.paths),
+    resources: unionArray(options.resources, impact.resources),
+    entryIds: unionArray(options.entryIds, (impact.routeIds ?? []).concat(impact.transitionIds ?? [])),
+    data: toJsonValue({
+      kind: impact.kind ?? 'frontier.route.impact',
+      version: impact.version,
+      seeds: impact.seeds ?? [],
+      routeIds: impact.routeIds ?? [],
+      transitionIds: impact.transitionIds ?? [],
+      reads: impact.reads ?? [],
+      writes: impact.writes ?? [],
+      loads: impact.loads ?? [],
+      guards: impact.guards ?? [],
+      emits: impact.emits ?? []
+    })
+  }, 0);
+}
+
+export function createInspectArtifactFromMigrationReport(
+  report: FrontierInspectMigrationReportLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const steps = report.steps ?? [];
+  const entries: FrontierRegistryEntry[] = steps.map((step) => ({
+    id: String(step.id),
+    kind: 'migration',
+    package: options.package ?? options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    feature: options.feature,
+    reads: step.reads,
+    writes: step.writes,
+    tags: uniqueStrings((options.tags ?? []).concat(['migration'])),
+    metadata: toJsonObject({
+      from: step.from,
+      to: step.to,
+      direction: step.direction,
+      checksum: step.checksum,
+      elapsedMs: step.elapsedMs
+    })
+  }));
+  const records: FrontierRegistryRecord[] = steps.map((step) => ({
+    id: 'migration-step:' + step.id,
+    entryId: String(step.id),
+    kind: 'migration',
+    status: report.dryRun === true ? 'pending' : 'ok',
+    durationMs: step.elapsedMs,
+    reads: step.reads,
+    writes: step.writes
+  }));
+  const events = steps.map((step, index) => normalizeEvent({
+    id: 'migration:' + step.id,
+    type: 'migration-step',
+    source: 'migration',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    entryId: String(step.id),
+    recordId: 'migration-step:' + step.id,
+    feature: options.feature,
+    package: options.package ?? options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    tags: options.tags,
+    status: report.changed === true ? 'changed' : 'ok',
+    value: toJsonValue(step)
+  }, index)).concat(
+    eventsFromDiagnostics(report.warnings ?? [], 'migration', options)
+      .map((event, index) => normalizeEvent(event, steps.length + index))
+  );
+  const paths = uniqueStrings(steps.flatMap((step) => (step.reads ?? []).concat(step.writes ?? []).map((path) => normalizeFrontierRegistryPath(path))));
+  const migrationResource = 'migration:' + String(report.registryId ?? 'registry') + ':' +
+    String(report.fromVersion ?? 'unknown') + '->' + String(report.toVersion ?? report.targetVersion ?? 'unknown');
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:migration:' + String(report.registryId ?? 'registry'),
+    kind: 'migration-report',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-migrations',
+    tags: uniqueStrings((options.tags ?? []).concat(report.dryRun === true ? ['migration', 'dry-run'] : ['migration'])),
+    graph: { entries, records },
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), paths),
+    resources: unionArray(options.resources, [migrationResource]),
+    events,
+    data: toJsonValue({
+      kind: report.kind ?? 'frontier.migration.report',
+      registryId: report.registryId,
+      source: report.source,
+      plugin: report.plugin,
+      api: report.api,
+      actor: report.actor,
+      fromVersion: report.fromVersion,
+      toVersion: report.toVersion,
+      targetVersion: report.targetVersion,
+      changed: report.changed,
+      dryRun: report.dryRun,
+      stepCount: report.stepCount ?? steps.length,
+      warningCount: report.warnings?.length ?? 0,
+      elapsedMs: report.elapsedMs
+    }),
+    metadata: mergeMetadata(options.metadata, report.metadata)
+  }, 0);
+}
+
+export function createInspectArtifactFromLogRecords(
+  records: readonly FrontierInspectLogRecordLike[],
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const events = records.map((record, index) => eventFromLogRecord(record, index, options));
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:log-records',
+    kind: 'log-records',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-logging',
+    tags: uniqueStrings((options.tags ?? []).concat(['telemetry', 'logging'])),
+    files: unionArray(options.files, events.map((event) => event.file).filter(isString)),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), events.map((event) => event.path).filter(isString)),
+    resources: unionArray(options.resources, events.map((event) => event.resource).filter(isString)),
+    events,
+    data: toJsonValue({ recordCount: records.length })
+  }, 0);
+}
+
+export function createInspectArtifactFromEventLog(
+  records: readonly FrontierInspectEventLogRecordLike[],
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const events = records.map((record, index) => eventFromEventLogRecord(record, index, options));
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:event-log',
+    kind: 'event-log-records',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-event-log',
+    tags: uniqueStrings((options.tags ?? []).concat(['event-log'])),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), events.map((event) => event.path).filter(isString)),
+    resources: unionArray(options.resources, events.map((event) => event.resource).filter(isString)),
+    events,
+    data: toJsonValue({ recordCount: records.length })
+  }, 0);
+}
+
+export function createInspectArtifactFromBenchmarkReport(
+  report: FrontierInspectBenchmarkReportLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const rows = report.rows ?? [];
+  const events = rows.map((row, index) => normalizeEvent({
+    id: 'benchmark:' + String(row.fixture ?? row.name ?? index),
+    type: 'benchmark',
+    source: 'benchmark',
+    sourcePackage: options.sourcePackage,
+    feature: options.feature,
+    package: options.package ?? report.package,
+    tags: options.tags,
+    status: row.status ?? 'ok',
+    value: toJsonValue(row)
+  }, index));
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:benchmark:' + String(report.package ?? 'package'),
+    kind: 'benchmark-report',
+    sourcePackage: options.sourcePackage ?? String(report.package ?? '@shapeshift-labs/frontier'),
+    package: options.package ?? report.package,
+    timestamp: options.timestamp ?? report.generatedAt,
+    tags: uniqueStrings((options.tags ?? []).concat(['benchmark'])),
+    events,
+    data: toJsonValue({
+      package: report.package,
+      version: report.version,
+      entryCount: report.entryCount,
+      rounds: report.rounds,
+      rowCount: rows.length
+    })
+  }, 0);
+}
+
+export function createInspectArtifactFromSemanticMergeEvidence(
+  evidence: FrontierInspectSemanticMergeEvidenceLike,
+  options: Omit<FrontierInspectArtifactInput, 'kind' | 'graph' | 'events' | 'data'> = {}
+): FrontierInspectArtifact {
+  const sourcePackage = options.sourcePackage ?? evidence.sourcePackage ?? '@shapeshift-labs/frontier-inspect';
+  const evidenceId = normalizeNonEmpty(String(evidence.id ?? evidence.mergeId ?? options.id ?? 'semantic-merge-evidence'), 'semantic merge evidence id');
+  const mergeEntryId = 'semantic-merge:' + evidenceId;
+  const mergeRecordId = 'semantic-merge-record:' + evidenceId;
+  const decision = evidence.decision === undefined ? undefined : String(evidence.decision);
+  const status = String(evidence.status ?? 'pending');
+  const regions = normalizeSemanticMergeRegions(evidence.semanticRegions ?? evidence.regions ?? [], evidence, options);
+  const proofLinks = normalizeSemanticMergeProofLinks(evidence.proofLinks ?? evidence.proofs ?? []);
+  const changedPaths = semanticMergeChangedPaths(evidence, regions);
+  const changedFiles = semanticMergeFiles(evidence, regions);
+  const proofResources = proofLinks.map(semanticMergeProofResource).filter(isString);
+  const resourceId = 'semantic-merge:' + evidenceId;
+  const tags = uniqueStrings((options.tags ?? []).concat(evidence.tags ?? [], ['semantic-merge']));
+
+  const entries: FrontierRegistryEntry[] = [{
+    id: mergeEntryId,
+    kind: 'semantic-merge-evidence',
+    description: options.summary ?? evidence.summary,
+    package: options.package ?? evidence.package ?? sourcePackage,
+    feature: options.feature ?? evidence.feature,
+    source: changedFiles.length === 0 ? undefined : changedFiles.map((file) => ({ file })),
+    writes: changedPaths.length === 0 ? undefined : changedPaths,
+    touches: uniqueStrings([resourceId].concat(proofResources)),
+    tags: uniqueStrings(tags.concat(decision ?? '', status)),
+    metadata: toJsonObject({
+      bundleId: evidence.bundleId,
+      decision,
+      mergeId: evidence.mergeId,
+      proofLinks,
+      regionIds: regions.map((region) => region.id),
+      status
+    })
+  }];
+  for (let i = 0; i < regions.length; i++) {
+    entries[entries.length] = semanticMergeRegionEntry(regions[i], mergeEntryId, evidence, options, sourcePackage);
+  }
+
+  const records: FrontierRegistryRecord[] = [{
+    id: mergeRecordId,
+    entryId: mergeEntryId,
+    kind: 'semantic-merge-evidence',
+    status,
+    writes: changedPaths.length === 0 ? undefined : changedPaths,
+    affected: regions.map((region) => 'entry:' + region.id),
+    metadata: toJsonObject({
+      decision,
+      proofLinks,
+      status
+    })
+  }];
+  for (let i = 0; i < regions.length; i++) {
+    const region = regions[i];
+    const writes = semanticRegionWrites(region);
+    records[records.length] = {
+      id: 'semantic-region-record:' + region.id,
+      entryId: region.id,
+      kind: region.kind,
+      status,
+      reads: region.reads.length === 0 ? undefined : region.reads,
+      writes: writes.length === 0 ? undefined : writes,
+      affected: proofResources,
+      metadata: toJsonObject({
+        decision,
+        status
+      })
+    };
+  }
+
+  const events = semanticMergeEvents(evidence, {
+    changedFiles,
+    changedPaths,
+    decision,
+    mergeEntryId,
+    mergeRecordId,
+    proofLinks,
+    regions,
+    resourceId,
+    sourcePackage,
+    status,
+    tags,
+    options
+  });
+
+  return normalizeArtifact({
+    ...options,
+    id: options.id ?? 'artifact:semantic-merge:' + evidenceId,
+    kind: 'semantic-merge-evidence',
+    sourcePackage,
+    feature: options.feature ?? evidence.feature,
+    package: options.package ?? evidence.package ?? sourcePackage,
+    summary: options.summary ?? evidence.summary,
+    timestamp: options.timestamp ?? evidence.generatedAt,
+    tags,
+    files: unionArray(options.files, changedFiles),
+    paths: unionArray(options.paths?.map((path) => normalizeFrontierRegistryPath(path)), changedPaths),
+    resources: unionArray(options.resources, [resourceId].concat(proofResources)),
+    graph: { entries, records },
+    events,
+    data: toJsonValue({
+      kind: evidence.kind ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND,
+      version: evidence.version ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION,
+      id: evidence.id,
+      mergeId: evidence.mergeId,
+      bundleId: evidence.bundleId,
+      source: evidence.source,
+      decision,
+      status,
+      changedPaths,
+      changedFiles,
+      semanticRegions: regions,
+      proofLinks,
+      regionCount: regions.length,
+      proofLinkCount: proofLinks.length
+    }),
+    metadata: mergeMetadata(options.metadata, evidence.metadata)
+  }, 0);
+}
+
 export function appendInspectArtifact(
   bundle: FrontierInspectBundle,
   artifact: FrontierInspectArtifactInput
@@ -515,18 +1320,21 @@ export function queryInspectBundle(
     : emptyRegistryQuery();
   const registryEntryIds = new Set(registry.entries.map((entry) => entry.id));
   const registryRecordIds = new Set(registry.records.map((record) => record.id));
+  const index = getBundleIndex(bundle);
+  const artifactCandidates = candidateArtifacts(bundle, index, input);
+  const eventCandidates = candidateEvents(bundle, index, input);
   const artifacts: FrontierInspectArtifact[] = [];
   const events: FrontierInspectEvent[] = [];
 
-  for (let i = 0; i < bundle.artifacts.length; i++) {
-    const artifact = bundle.artifacts[i];
+  for (let i = 0; i < artifactCandidates.length; i++) {
+    const artifact = artifactCandidates[i];
     if (matchesArtifact(artifact, input, registryEntryIds, registryRecordIds)) {
       artifacts[artifacts.length] = cloneArtifact(artifact);
       if (artifacts.length >= limit) break;
     }
   }
-  for (let i = 0; i < bundle.events.length; i++) {
-    const event = bundle.events[i];
+  for (let i = 0; i < eventCandidates.length; i++) {
+    const event = eventCandidates[i];
     if (matchesEvent(event, input, registryEntryIds, registryRecordIds)) {
       events[events.length] = cloneEvent(event);
       if (events.length >= limit) break;
@@ -628,7 +1436,7 @@ export function createInspectReport(
 
 export function createInspectFeatureMap(bundle: FrontierInspectBundle): FrontierInspectFeatureMap {
   const summaries = new Map<string, MutableFeatureSummary>();
-  const registry = frontierRegistryIndex(bundle.graph);
+  const registry = getBundleIndex(bundle).registry;
   for (const feature of registry.features) {
     const summary = getFeatureSummary(summaries, feature.id);
     for (const entry of feature.entries) addUnique(summary.entries, entry);
@@ -672,7 +1480,7 @@ export function createInspectFeatureMap(bundle: FrontierInspectBundle): Frontier
     for (const path of artifact.paths) addUnique(summary.paths, path);
     for (const resource of artifact.resources) addUnique(summary.resources, resource);
     if (artifact.kind === 'test') addUnique(summary.tests, artifact.id);
-    if (artifact.kind === 'benchmark') addUnique(summary.benchmarks, artifact.id);
+    if (artifact.kind === 'benchmark' || artifact.kind === 'benchmark-report') addUnique(summary.benchmarks, artifact.id);
   }
   for (const event of bundle.events) {
     const feature = event.feature;
@@ -693,6 +1501,58 @@ export function createInspectFeatureMap(bundle: FrontierInspectBundle): Frontier
     generatedAt: Date.now(),
     features
   };
+}
+
+export function createInspectSwarmLifetimeSummary(bundle: FrontierInspectBundle): FrontierInspectSwarmLifetimeSummary {
+  const observations = collectSwarmLifetimeObservations(bundle);
+  const activeAgents = collectSwarmLifetimeBucket(observations.active, {
+    id: (observation) => extractSwarmLifetimeAgentId(observation) ?? observation.id
+  });
+  const runOutcomes = collectSwarmLifetimeRunOutcomes(observations);
+  const humanQuestions = collectSwarmLifetimeHumanQuestions(observations.humanQuestions);
+  const reviewDebt = collectSwarmLifetimeReviewDebt(observations.review, observations.rerun);
+  const packageGates = collectSwarmLifetimePackageGates(observations.packageGateObservations);
+  const suppressedAuditArtifacts = collectSwarmLifetimeSuppressedAuditArtifacts(observations.suppressedAuditArtifacts);
+  const modelPerformance = collectSwarmLifetimeModelPerformance(observations);
+  const queueDepthByMeaning = {
+    activeWork: activeAgents.count,
+    coordinatorReview: observations.review.length,
+    completedHistory: runOutcomes.completed.count + runOutcomes.committedApplied.count,
+    committedApplied: runOutcomes.committedApplied.count,
+    conflicts: runOutcomes.conflicts.count,
+    rerunWork: observations.rerun.length,
+    packageGates: packageGates.count,
+    suppressedAuditArtifacts: suppressedAuditArtifacts.count,
+    realBlockers: observations.blocked.length,
+    humanQuestions: humanQuestions.count
+  };
+  const cost = modelPerformance.cost ?? collectSwarmLifetimeCost(observations.costCandidates);
+  const visibleOutcomeCount = runOutcomes.completed.count + runOutcomes.committedApplied.count;
+  return {
+    kind: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    live: {
+      activeAgents,
+      runOutcomes,
+      queueDepthByMeaning,
+      reviewDebt,
+      trueHumanQuestions: humanQuestions,
+      packageGates,
+      suppressedAuditArtifacts
+    },
+    visibleOutcomeCount,
+    suppressedAuditArtifactCount: suppressedAuditArtifacts.count,
+    usefulOutputCount: visibleOutcomeCount,
+    cost,
+    modelPerformance,
+    sourcesScanned: collectSwarmLifetimeSourcesScanned(bundle),
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+export function createInspectAutonomousRunOutcomeSummary(bundle: FrontierInspectBundle): FrontierInspectSwarmLifetimeSummary {
+  return createInspectSwarmLifetimeSummary(bundle);
 }
 
 export function summarizeInspectBundle(bundle: FrontierInspectBundle): FrontierInspectSummary {
@@ -1108,6 +1968,421 @@ function graphFromPlaywrightTimeline(
   return frontierRegistryMergeGraphs(graphs);
 }
 
+function routeEntriesFromManifest(
+  manifest: FrontierInspectRouteManifestLike,
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package' | 'sourcePackage' | 'tags'>
+): FrontierRegistryEntry[] {
+  const entries: FrontierRegistryEntry[] = [];
+  for (const route of manifest.routes ?? []) {
+    entries[entries.length] = {
+      id: String(route.id),
+      kind: route.kind ?? 'route',
+      description: route.title,
+      package: route.package ?? options.package ?? options.sourcePackage,
+      feature: route.feature ?? options.feature,
+      owner: route.owner,
+      source: normalizeSourceLike(route.source),
+      reads: route.reads,
+      writes: route.writes,
+      dependsOn: route.parentId === undefined ? undefined : [String(route.parentId)],
+      touches: uniqueStrings([route.resource, route.pattern, route.id].filter(isString)),
+      handles: descriptorsToStrings(route.guards),
+      produces: descriptorsToStrings(route.loads),
+      emits: route.emits,
+      tags: uniqueStrings((options.tags ?? []).concat(route.tags ?? [])),
+      metadata: toJsonObject(route.metadata)
+    };
+  }
+  for (let i = 0; i < (manifest.transitions ?? []).length; i++) {
+    const transition = (manifest.transitions ?? [])[i];
+    entries[entries.length] = {
+      id: transition.id ?? 'transition:' + i + ':' + transition.to,
+      kind: transition.kind ?? 'transition',
+      package: options.package ?? options.sourcePackage,
+      feature: options.feature,
+      reads: transition.reads,
+      writes: transition.writes,
+      dependsOn: transition.from === undefined
+        ? undefined
+        : Array.isArray(transition.from) ? transition.from.map(String) : [String(transition.from)],
+      touches: [String(transition.to)],
+      handles: descriptorsToStrings(transition.guards),
+      produces: descriptorsToStrings(transition.loads),
+      emits: transition.emits,
+      tags: uniqueStrings((options.tags ?? []).concat(transition.tags ?? [])),
+      metadata: toJsonObject(transition.metadata)
+    };
+  }
+  return entries;
+}
+
+function resourcesFromRouteManifest(manifest: FrontierInspectRouteManifestLike): string[] {
+  const values: string[] = [];
+  for (const route of manifest.routes ?? []) {
+    if (route.resource !== undefined) addUnique(values, route.resource);
+    if (route.pattern !== undefined) addUnique(values, route.pattern);
+    addUnique(values, route.id);
+    for (const load of route.loads ?? []) {
+      const resource = descriptorResource(load);
+      if (resource !== undefined) addUnique(values, resource);
+    }
+  }
+  for (const transition of manifest.transitions ?? []) {
+    addUnique(values, transition.to);
+    for (const from of Array.isArray(transition.from) ? transition.from : transition.from === undefined ? [] : [transition.from]) {
+      addUnique(values, String(from));
+    }
+    for (const load of transition.loads ?? []) {
+      const resource = descriptorResource(load);
+      if (resource !== undefined) addUnique(values, resource);
+    }
+  }
+  return values.sort();
+}
+
+function pathsFromRouteManifest(manifest: FrontierInspectRouteManifestLike): string[] {
+  const values: string[] = [];
+  for (const route of manifest.routes ?? []) {
+    for (const path of route.reads ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const path of route.writes ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const guard of route.guards ?? []) for (const path of descriptorReads(guard)) addUnique(values, normalizeFrontierRegistryPath(path));
+  }
+  for (const transition of manifest.transitions ?? []) {
+    for (const path of transition.reads ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const path of transition.writes ?? []) addUnique(values, normalizeFrontierRegistryPath(path));
+    for (const guard of transition.guards ?? []) for (const path of descriptorReads(guard)) addUnique(values, normalizeFrontierRegistryPath(path));
+  }
+  return values.sort();
+}
+
+function filesFromRouteManifest(manifest: FrontierInspectRouteManifestLike): string[] {
+  const values: string[] = [];
+  for (const route of manifest.routes ?? []) for (const file of sourceLikeFiles(route.source)) addUnique(values, file);
+  return values.sort();
+}
+
+function eventsFromDiagnostics(
+  diagnostics: readonly FrontierInspectDiagnosticLike[],
+  source: string,
+  options: Pick<FrontierInspectArtifactInput, 'sourcePackage' | 'feature' | 'package' | 'tags'>
+): FrontierInspectEventInput[] {
+  return diagnostics.map((diagnostic, index) => ({
+    id: source + ':diagnostic:' + index + ':' + String(diagnostic.code ?? diagnostic.stepId ?? diagnostic.routeId ?? diagnostic.transitionId ?? 'issue'),
+    type: source + '.diagnostic',
+    label: diagnostic.message,
+    source,
+    sourcePackage: options.sourcePackage,
+    feature: options.feature,
+    package: options.package ?? options.sourcePackage,
+    tags: options.tags,
+    path: diagnostic.path,
+    routeId: diagnostic.routeId,
+    severity: diagnostic.severity ?? 'warning',
+    status: diagnostic.severity === 'error' ? 'error' : 'pending',
+    value: toJsonValue(diagnostic)
+  }));
+}
+
+function eventFromLogRecord(
+  record: FrontierInspectLogRecordLike,
+  index: number,
+  options: Pick<FrontierInspectArtifactInput, 'sourcePackage' | 'feature' | 'package' | 'tags'>
+): FrontierInspectEvent {
+  const attributes = record.attributes ?? {};
+  const resource = record.resource ?? {};
+  const telemetry = record.telemetry ?? {};
+  const level = String(record.level ?? 'info');
+  return normalizeEvent({
+    id: 'log:' + (record.traceId ?? record.spanId ?? record.name ?? index) + ':' + index,
+    type: record.name ?? 'log',
+    label: record.message,
+    timestamp: record.time,
+    source: 'logging',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-logging',
+    entryId: stringField(attributes, telemetry, resource, ['entryId', 'entry.id', 'frontier.entry']),
+    recordId: stringField(attributes, telemetry, resource, ['recordId', 'record.id', 'frontier.record']),
+    feature: stringField(attributes, telemetry, resource, ['feature', 'frontier.feature']) ?? options.feature,
+    package: stringField(attributes, telemetry, resource, ['package', 'frontier.package']) ?? options.package ?? options.sourcePackage,
+    tags: uniqueStrings((options.tags ?? []).concat(level, record.scope ?? '', stringArrayField(attributes, 'tags'))),
+    file: stringField(attributes, telemetry, resource, ['file', 'source.file']),
+    path: stringField(attributes, telemetry, resource, ['path', 'state.path']),
+    resource: stringField(attributes, telemetry, resource, ['resource', 'route', 'url']),
+    routeId: stringField(attributes, telemetry, resource, ['routeId', 'route.id']),
+    severity: logLevelToSeverity(level),
+    status: level === 'error' || level === 'fatal' ? 'error' : 'ok',
+    value: toJsonValue(record),
+    metadata: toJsonObject({
+      traceId: record.traceId,
+      spanId: record.spanId,
+      parentSpanId: record.parentSpanId,
+      durationMs: record.durationMs
+    })
+  }, index);
+}
+
+function eventFromEventLogRecord(
+  record: FrontierInspectEventLogRecordLike,
+  index: number,
+  options: Pick<FrontierInspectArtifactInput, 'sourcePackage' | 'feature' | 'package' | 'tags'>
+): FrontierInspectEvent {
+  const headers = record.headers ?? {};
+  const value = isRecord(record.value) ? record.value : {};
+  const metadata = isRecord(value.metadata) ? value.metadata : {};
+  const eventType = stringField(value, headers, metadata, ['kind', 'type']) ?? 'event-log-record';
+  return normalizeEvent({
+    id: 'event-log:' + String(record.offset ?? index),
+    type: eventType,
+    label: record.key,
+    timestamp: record.timestamp,
+    source: 'event-log',
+    sourcePackage: options.sourcePackage ?? '@shapeshift-labs/frontier-event-log',
+    entryId: stringField(headers, value, metadata, ['entryId', 'entry.id']),
+    recordId: stringField(headers, value, metadata, ['recordId', 'record.id']),
+    feature: stringField(headers, value, metadata, ['feature']) ?? options.feature,
+    package: stringField(headers, value, metadata, ['package']) ?? options.package ?? options.sourcePackage,
+    tags: uniqueStrings((options.tags ?? []).concat('event-log', stringArrayField(headers, 'tags'))),
+    path: stringField(headers, value, metadata, ['path']),
+    resource: stringField(headers, value, metadata, ['resource', 'route']),
+    severity: stringField(headers, value, metadata, ['severity']),
+    status: stringField(headers, value, metadata, ['status']) ?? 'ok',
+    value: toJsonValue(record.value),
+    metadata: toJsonObject({ offset: record.offset, key: record.key, headers: record.headers })
+  }, index);
+}
+
+interface SemanticMergeEventContext {
+  changedFiles: string[];
+  changedPaths: string[];
+  decision: string | undefined;
+  mergeEntryId: string;
+  mergeRecordId: string;
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package'>;
+  proofLinks: FrontierInspectProofLink[];
+  regions: FrontierInspectSemanticRegion[];
+  resourceId: string;
+  sourcePackage: string;
+  status: string;
+  tags: string[];
+}
+
+function normalizeSemanticMergeRegions(
+  regions: readonly FrontierInspectSemanticRegionLike[],
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'feature' | 'package'>,
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package'>
+): FrontierInspectSemanticRegion[] {
+  const out: FrontierInspectSemanticRegion[] = [];
+  for (let i = 0; i < regions.length; i++) {
+    const region = regions[i];
+    const path = region.path === undefined ? undefined : normalizeFrontierRegistryPath(region.path);
+    const normalized: FrontierInspectSemanticRegion = {
+      id: normalizeNonEmpty(String(region.id ?? semanticRegionFallbackId(region, i)), 'semantic region id'),
+      kind: String(region.kind ?? 'semantic-region'),
+      label: region.label === undefined ? undefined : String(region.label),
+      file: region.file === undefined ? undefined : String(region.file),
+      path,
+      symbol: region.symbol === undefined ? undefined : String(region.symbol),
+      startLine: normalizeOptionalNumber(region.startLine),
+      startColumn: normalizeOptionalNumber(region.startColumn),
+      endLine: normalizeOptionalNumber(region.endLine),
+      endColumn: normalizeOptionalNumber(region.endColumn),
+      feature: region.feature === undefined ? evidence.feature ?? options.feature : String(region.feature),
+      package: region.package === undefined ? evidence.package ?? options.package : String(region.package),
+      owner: region.owner === undefined ? undefined : String(region.owner),
+      reads: uniqueStrings((region.reads ?? []).map((read) => normalizeFrontierRegistryPath(read))),
+      writes: uniqueStrings((region.writes ?? []).map((write) => normalizeFrontierRegistryPath(write))),
+      tags: uniqueStrings(region.tags ?? []),
+      metadata: toJsonObject(region.metadata)
+    };
+    out[out.length] = normalized;
+  }
+  return out;
+}
+
+function semanticRegionFallbackId(region: FrontierInspectSemanticRegionLike, index: number): string {
+  const parts = [
+    region.file,
+    region.symbol,
+    region.path === undefined ? undefined : normalizeFrontierRegistryPath(region.path),
+    region.label
+  ].filter(isString);
+  return parts.length === 0 ? 'semantic-region:' + index : 'semantic-region:' + parts.join('#');
+}
+
+function normalizeSemanticMergeProofLinks(links: readonly FrontierInspectProofLinkLike[]): FrontierInspectProofLink[] {
+  const out: FrontierInspectProofLink[] = [];
+  for (let i = 0; i < links.length; i++) {
+    const link = links[i];
+    const href = firstString(link.href, link.uri, link.url);
+    const path = link.path === undefined ? undefined : String(link.path);
+    out[out.length] = {
+      id: normalizeNonEmpty(String(link.id ?? link.hash ?? href ?? path ?? 'proof:' + i), 'semantic merge proof link id'),
+      kind: link.kind === undefined ? undefined : String(link.kind),
+      label: link.label === undefined ? undefined : String(link.label),
+      href,
+      path,
+      hash: link.hash === undefined ? undefined : String(link.hash),
+      status: link.status === undefined ? undefined : String(link.status),
+      metadata: toJsonObject(link.metadata)
+    };
+  }
+  return out;
+}
+
+function semanticMergeChangedPaths(
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'changedPaths' | 'paths'>,
+  regions: readonly FrontierInspectSemanticRegion[]
+): string[] {
+  const paths: string[] = [];
+  for (const path of evidence.changedPaths ?? []) addUnique(paths, normalizeFrontierRegistryPath(path));
+  for (const path of evidence.paths ?? []) addUnique(paths, normalizeFrontierRegistryPath(path));
+  for (const region of regions) {
+    if (region.path !== undefined) addUnique(paths, region.path);
+    for (const write of region.writes) addUnique(paths, write);
+  }
+  return paths.sort();
+}
+
+function semanticMergeFiles(
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'changedFiles' | 'files'>,
+  regions: readonly FrontierInspectSemanticRegion[]
+): string[] {
+  const files: string[] = [];
+  for (const file of evidence.changedFiles ?? []) addUnique(files, String(file));
+  for (const file of evidence.files ?? []) addUnique(files, String(file));
+  for (const region of regions) if (region.file !== undefined) addUnique(files, region.file);
+  return files.sort();
+}
+
+function semanticMergeRegionEntry(
+  region: FrontierInspectSemanticRegion,
+  mergeEntryId: string,
+  evidence: Pick<FrontierInspectSemanticMergeEvidenceLike, 'feature' | 'package' | 'tags'>,
+  options: Pick<FrontierInspectArtifactInput, 'feature' | 'package' | 'tags'>,
+  sourcePackage: string
+): FrontierRegistryEntry {
+  const writes = semanticRegionWrites(region);
+  return {
+    id: region.id,
+    kind: region.kind,
+    description: region.label,
+    package: region.package ?? evidence.package ?? options.package ?? sourcePackage,
+    feature: region.feature ?? evidence.feature ?? options.feature,
+    owner: region.owner,
+    source: semanticMergeRegionSource(region),
+    reads: region.reads.length === 0 ? undefined : region.reads,
+    writes: writes.length === 0 ? undefined : writes,
+    dependsOn: [mergeEntryId],
+    touches: uniqueStrings(['semantic-region:' + region.id].concat(region.symbol === undefined ? [] : ['symbol:' + region.symbol])),
+    tags: uniqueStrings((options.tags ?? []).concat(evidence.tags ?? [], region.tags, ['semantic-region'])),
+    metadata: mergeMetadata(toJsonObject({
+      endColumn: region.endColumn,
+      endLine: region.endLine,
+      path: region.path,
+      startColumn: region.startColumn,
+      startLine: region.startLine,
+      symbol: region.symbol
+    }), region.metadata)
+  };
+}
+
+function semanticMergeRegionSource(region: FrontierInspectSemanticRegion): FrontierRegistryEntry['source'] | undefined {
+  if (region.file === undefined) return undefined;
+  return normalizeSourceLike({
+    file: region.file,
+    line: region.startLine,
+    column: region.startColumn,
+    symbol: region.symbol,
+    package: region.package
+  });
+}
+
+function semanticRegionWrites(region: FrontierInspectSemanticRegion): string[] {
+  const writes = region.writes.slice();
+  if (region.path !== undefined) addUnique(writes, region.path);
+  return writes.sort();
+}
+
+function semanticMergeProofResource(link: FrontierInspectProofLink): string {
+  return link.href ?? link.path ?? link.hash ?? link.id;
+}
+
+function semanticMergeEvents(
+  evidence: FrontierInspectSemanticMergeEvidenceLike,
+  context: SemanticMergeEventContext
+): FrontierInspectEventInput[] {
+  const events: FrontierInspectEventInput[] = [{
+    id: context.resourceId + ':decision',
+    type: 'semantic-merge',
+    label: evidence.summary,
+    source: evidence.source ?? 'semantic-merge',
+    sourcePackage: context.sourcePackage,
+    entryId: context.mergeEntryId,
+    recordId: context.mergeRecordId,
+    feature: context.options.feature ?? evidence.feature,
+    package: context.options.package ?? evidence.package ?? context.sourcePackage,
+    tags: context.tags,
+    path: context.changedPaths[0],
+    resource: context.resourceId,
+    status: context.status,
+    value: toJsonValue({
+      changedFiles: context.changedFiles,
+      changedPaths: context.changedPaths,
+      decision: context.decision,
+      proofLinks: context.proofLinks,
+      semanticRegions: context.regions,
+      status: context.status
+    }),
+    metadata: toJsonObject({
+      bundleId: evidence.bundleId,
+      kind: evidence.kind ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND,
+      mergeId: evidence.mergeId,
+      version: evidence.version ?? FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION
+    })
+  }];
+
+  for (let i = 0; i < context.regions.length; i++) {
+    const region = context.regions[i];
+    const writes = semanticRegionWrites(region);
+    events[events.length] = {
+      id: 'semantic-region:' + region.id,
+      type: 'semantic-region',
+      label: region.label,
+      source: evidence.source ?? 'semantic-merge',
+      sourcePackage: context.sourcePackage,
+      entryId: region.id,
+      recordId: 'semantic-region-record:' + region.id,
+      feature: region.feature ?? context.options.feature ?? evidence.feature,
+      package: region.package ?? context.options.package ?? evidence.package ?? context.sourcePackage,
+      tags: uniqueStrings(context.tags.concat(region.tags)),
+      file: region.file,
+      path: region.path ?? writes[0] ?? region.reads[0],
+      resource: 'semantic-region:' + region.id,
+      status: context.status,
+      value: toJsonValue(region)
+    };
+  }
+
+  for (let i = 0; i < context.proofLinks.length; i++) {
+    const proof = context.proofLinks[i];
+    events[events.length] = {
+      id: context.resourceId + ':proof:' + proof.id,
+      type: 'semantic-merge.proof',
+      label: proof.label,
+      source: evidence.source ?? 'semantic-merge',
+      sourcePackage: context.sourcePackage,
+      entryId: context.mergeEntryId,
+      recordId: context.mergeRecordId,
+      feature: context.options.feature ?? evidence.feature,
+      package: context.options.package ?? evidence.package ?? context.sourcePackage,
+      tags: context.tags,
+      resource: semanticMergeProofResource(proof),
+      status: proof.status ?? context.status,
+      value: toJsonValue(proof)
+    };
+  }
+  return events;
+}
+
 function registryQueryFromInspectQuery(input: FrontierInspectQueryInput): FrontierRegistryQueryInput {
   return {
     ids: unionArray(input.entryIds, input.ids),
@@ -1349,23 +2624,141 @@ function getBundleIndex(bundle: FrontierInspectBundle): FrontierInspectBundleInd
     registry: frontierRegistryIndex(bundle.graph),
     artifactsById: new Map(),
     eventsById: new Map(),
+    artifactOrder: new Map(),
+    eventOrder: new Map(),
+    artifactIdsByKind: new Map(),
+    artifactIdsBySourcePackage: new Map(),
+    artifactIdsByPackage: new Map(),
+    artifactIdsByFeature: new Map(),
+    artifactIdsByTag: new Map(),
+    artifactIdsByFile: new Map(),
+    artifactIdsByPath: new Map(),
+    artifactIdsByResource: new Map(),
     artifactIdsByEntryId: new Map(),
     eventIdsByEntryId: new Map(),
     artifactIdsByRecordId: new Map(),
-    eventIdsByRecordId: new Map()
+    eventIdsByRecordId: new Map(),
+    eventIdsBySourcePackage: new Map(),
+    eventIdsByPackage: new Map(),
+    eventIdsByFeature: new Map(),
+    eventIdsByTag: new Map(),
+    eventIdsByFile: new Map(),
+    eventIdsByPath: new Map(),
+    eventIdsByResource: new Map(),
+    eventIdsByStatus: new Map(),
+    eventIdsBySeverity: new Map()
   };
-  for (const artifact of bundle.artifacts) {
+  for (let i = 0; i < bundle.artifacts.length; i++) {
+    const artifact = bundle.artifacts[i];
     index.artifactsById.set(artifact.id, artifact);
+    index.artifactOrder.set(artifact.id, i);
+    addMapSet(index.artifactIdsByKind, artifact.kind, artifact.id);
+    if (artifact.sourcePackage !== undefined) addMapSet(index.artifactIdsBySourcePackage, artifact.sourcePackage, artifact.id);
+    if (artifact.package !== undefined) addMapSet(index.artifactIdsByPackage, artifact.package, artifact.id);
+    if (artifact.feature !== undefined) addMapSet(index.artifactIdsByFeature, artifact.feature, artifact.id);
+    for (const tag of artifact.tags) addMapSet(index.artifactIdsByTag, tag, artifact.id);
+    for (const file of artifact.files) addMapSet(index.artifactIdsByFile, file, artifact.id);
+    for (const path of artifact.paths) addMapSet(index.artifactIdsByPath, path, artifact.id);
+    for (const resource of artifact.resources) addMapSet(index.artifactIdsByResource, resource, artifact.id);
     for (const entryId of artifact.entryIds) addMapSet(index.artifactIdsByEntryId, entryId, artifact.id);
     for (const recordId of artifact.recordIds) addMapSet(index.artifactIdsByRecordId, recordId, artifact.id);
   }
-  for (const event of bundle.events) {
+  for (let i = 0; i < bundle.events.length; i++) {
+    const event = bundle.events[i];
     index.eventsById.set(event.id, event);
+    index.eventOrder.set(event.id, i);
+    if (event.sourcePackage !== undefined) addMapSet(index.eventIdsBySourcePackage, event.sourcePackage, event.id);
+    if (event.package !== undefined) addMapSet(index.eventIdsByPackage, event.package, event.id);
+    if (event.feature !== undefined) addMapSet(index.eventIdsByFeature, event.feature, event.id);
+    for (const tag of event.tags) addMapSet(index.eventIdsByTag, tag, event.id);
+    if (event.file !== undefined) addMapSet(index.eventIdsByFile, event.file, event.id);
+    if (event.path !== undefined) addMapSet(index.eventIdsByPath, event.path, event.id);
+    if (event.resource !== undefined) addMapSet(index.eventIdsByResource, event.resource, event.id);
+    if (event.status !== undefined) addMapSet(index.eventIdsByStatus, event.status, event.id);
+    if (event.severity !== undefined) addMapSet(index.eventIdsBySeverity, event.severity, event.id);
     if (event.entryId !== undefined) addMapSet(index.eventIdsByEntryId, event.entryId, event.id);
     if (event.recordId !== undefined) addMapSet(index.eventIdsByRecordId, event.recordId, event.id);
   }
   bundleIndexes.set(bundle, index);
   return index;
+}
+
+function candidateArtifacts(
+  bundle: FrontierInspectBundle,
+  index: FrontierInspectBundleIndex,
+  input: FrontierInspectQueryInput
+): FrontierInspectArtifact[] {
+  let ids: Set<string> | undefined;
+  ids = intersectCandidate(ids, idsFromExact(index.artifactsById, unionArray(input.artifactIds, input.ids)));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByKind, input.artifactKinds));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsBySourcePackage, input.sourcePackages));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByPackage, input.packages));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByFeature, input.features));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByTag, input.tags));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByFile, input.files));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByPath, input.paths?.map((path) => normalizeFrontierRegistryPath(path))));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByResource, input.resources));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByEntryId, input.entryIds));
+  ids = intersectCandidate(ids, idsFromMap(index.artifactIdsByRecordId, input.recordIds));
+  if (ids === undefined) return bundle.artifacts;
+  return materializeCandidates(ids, index.artifactsById, index.artifactOrder);
+}
+
+function candidateEvents(
+  bundle: FrontierInspectBundle,
+  index: FrontierInspectBundleIndex,
+  input: FrontierInspectQueryInput
+): FrontierInspectEvent[] {
+  let ids: Set<string> | undefined;
+  ids = intersectCandidate(ids, idsFromExact(index.eventsById, unionArray(input.eventIds, input.ids)));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsBySourcePackage, input.sourcePackages));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByPackage, input.packages));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByFeature, input.features));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByTag, input.tags));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByFile, input.files));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByPath, input.paths?.map((path) => normalizeFrontierRegistryPath(path))));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByResource, input.resources));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByEntryId, input.entryIds));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByRecordId, input.recordIds));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsByStatus, input.statuses));
+  ids = intersectCandidate(ids, idsFromMap(index.eventIdsBySeverity, input.severities));
+  if (ids === undefined) return bundle.events;
+  return materializeCandidates(ids, index.eventsById, index.eventOrder);
+}
+
+function idsFromExact<T>(map: Map<string, T>, values: readonly string[] | undefined): Set<string> | undefined {
+  if (values === undefined) return undefined;
+  const out = new Set<string>();
+  for (const value of values) if (map.has(String(value))) out.add(String(value));
+  return out;
+}
+
+function idsFromMap(map: Map<string, Set<string>>, values: readonly string[] | undefined): Set<string> | undefined {
+  if (values === undefined) return undefined;
+  const out = new Set<string>();
+  for (const value of values) {
+    const bucket = map.get(String(value));
+    if (bucket !== undefined) for (const id of bucket) out.add(id);
+  }
+  return out;
+}
+
+function intersectCandidate(left: Set<string> | undefined, right: Set<string> | undefined): Set<string> | undefined {
+  if (right === undefined) return left;
+  if (left === undefined) return right;
+  const out = new Set<string>();
+  for (const value of left) if (right.has(value)) out.add(value);
+  return out;
+}
+
+function materializeCandidates<T>(ids: Set<string>, map: Map<string, T>, order: Map<string, number>): T[] {
+  const rows: Array<{ id: string; value: T }> = [];
+  for (const id of ids) {
+    const value = map.get(id);
+    if (value !== undefined) rows[rows.length] = { id, value };
+  }
+  rows.sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  return rows.map((row) => row.value);
 }
 
 function summarizeParts(
@@ -1396,6 +2789,1341 @@ function emptySummary(): FrontierInspectSummary {
     fileCount: 0,
     resourceCount: 0,
     errorCount: 0
+  };
+}
+
+type SwarmLifetimeMeaning =
+  | 'active'
+  | 'review'
+  | 'rerun'
+  | 'conflict'
+  | 'blocked'
+  | 'committed-applied'
+  | 'completed'
+  | 'package-gate'
+  | 'human-question'
+  | 'suppressed-audit'
+  | 'unknown';
+
+interface SwarmLifetimeObservation {
+  id: string;
+  text: string;
+  sources: string[];
+  payloads: unknown[];
+  kind?: string;
+  status?: string;
+}
+
+interface SwarmLifetimeObservations {
+  active: SwarmLifetimeObservation[];
+  review: SwarmLifetimeObservation[];
+  rerun: SwarmLifetimeObservation[];
+  conflicts: SwarmLifetimeObservation[];
+  blocked: SwarmLifetimeObservation[];
+  committedApplied: SwarmLifetimeObservation[];
+  completed: SwarmLifetimeObservation[];
+  packageGateObservations: SwarmLifetimeObservation[];
+  suppressedAuditArtifacts: SwarmLifetimeObservation[];
+  humanQuestions: SwarmLifetimeObservation[];
+  costCandidates: SwarmLifetimeObservation[];
+}
+
+function collectSwarmLifetimeObservations(bundle: FrontierInspectBundle): SwarmLifetimeObservations {
+  const observations: SwarmLifetimeObservations = {
+    active: [],
+    review: [],
+    rerun: [],
+    conflicts: [],
+    blocked: [],
+    committedApplied: [],
+    completed: [],
+    packageGateObservations: [],
+    suppressedAuditArtifacts: [],
+    humanQuestions: [],
+    costCandidates: []
+  };
+  for (const artifact of bundle.artifacts) addSwarmLifetimeObservation(observations, swarmObservationFromArtifact(artifact));
+  for (const event of bundle.events) addSwarmLifetimeObservation(observations, swarmObservationFromEvent(event));
+  for (const entry of bundle.graph.entries) addSwarmLifetimeObservation(observations, swarmObservationFromEntry(entry));
+  for (const record of bundle.graph.records) addSwarmLifetimeObservation(observations, swarmObservationFromRecord(record));
+  return observations;
+}
+
+function addSwarmLifetimeObservation(
+  observations: SwarmLifetimeObservations,
+  observation: SwarmLifetimeObservation | undefined
+): void {
+  if (observation === undefined) return;
+  const meaning = classifySwarmLifetimeMeaning(observation);
+  observations.costCandidates[observations.costCandidates.length] = observation;
+  if (meaning === 'active') observations.active[observations.active.length] = observation;
+  else if (meaning === 'review') observations.review[observations.review.length] = observation;
+  else if (meaning === 'rerun') observations.rerun[observations.rerun.length] = observation;
+  else if (meaning === 'conflict') observations.conflicts[observations.conflicts.length] = observation;
+  else if (meaning === 'blocked') observations.blocked[observations.blocked.length] = observation;
+  else if (meaning === 'committed-applied') observations.committedApplied[observations.committedApplied.length] = observation;
+  else if (meaning === 'human-question') observations.humanQuestions[observations.humanQuestions.length] = observation;
+  else if (meaning === 'completed') observations.completed[observations.completed.length] = observation;
+  else if (meaning === 'package-gate') observations.packageGateObservations[observations.packageGateObservations.length] = observation;
+  else if (meaning === 'suppressed-audit') observations.suppressedAuditArtifacts[observations.suppressedAuditArtifacts.length] = observation;
+}
+
+function collectSwarmLifetimeRunOutcomes(
+  observations: SwarmLifetimeObservations
+): FrontierInspectSwarmLifetimeRunOutcomeSummary {
+  return {
+    completed: collectSwarmLifetimeBucket(observations.completed),
+    committedApplied: collectSwarmLifetimeBucket(observations.committedApplied),
+    conflicts: collectSwarmLifetimeBucket(observations.conflicts),
+    reruns: collectSwarmLifetimeBucket(observations.rerun)
+  };
+}
+
+function classifySwarmLifetimeMeaning(observation: SwarmLifetimeObservation): SwarmLifetimeMeaning {
+  const text = observation.text.toLowerCase();
+  if (looksLikeTrueHumanQuestion(text, observation.status, observation.payloads)) return 'human-question';
+  if (looksLikeSuppressedAuditArtifact(text, observation.kind, observation.status, observation.payloads)) return 'suppressed-audit';
+  if (looksLikePackageGate(text, observation.kind, observation.status, observation.payloads)) return 'package-gate';
+  if (looksLikeActiveWork(text, observation.status, observation.payloads)) return 'active';
+  if (looksLikeCoordinatorReview(text, observation.status, observation.payloads)) return 'review';
+  if (looksLikeRerunWork(text, observation.status, observation.payloads)) return 'rerun';
+  if (looksLikeConflictWork(text, observation.status, observation.payloads)) return 'conflict';
+  if (looksLikeCommittedApplied(text, observation.status, observation.payloads)) return 'committed-applied';
+  if (looksLikeCompletedHistory(text, observation.status, observation.payloads)) return 'completed';
+  if (looksLikeBlockedWork(text, observation.status, observation.payloads)) return 'blocked';
+  return 'unknown';
+}
+
+function looksLikeTrueHumanQuestion(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /human[-\s]?blocked|human[-\s]?question/.test(status.toLowerCase())) return true;
+  if (/human-question:/.test(text) || /human question/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['reason', 'question', 'missingAuthority', 'missing-authority'], /human-question:|human question/i));
+}
+
+function looksLikeSuppressedAuditArtifact(
+  text: string,
+  kind: string | undefined,
+  status: string | undefined,
+  payloads: readonly unknown[]
+): boolean {
+  if (kind !== undefined && /(?:audit|collection|intermediate|record-only|discovery|snapshot|archive)/i.test(kind)) return true;
+  if (status !== undefined && /^(stale-against-head|record-only|discovery|audit|intermediate)$/i.test(status)) return true;
+  if (/\b(?:audit|collection|intermediate|record-only|discovery|suppressed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['kind', 'phase', 'state', 'status', 'summary', 'reason'], /(?:stale-against-head|record-only|discovery|audit|intermediate|collection|suppressed)/i));
+}
+
+function looksLikePackageGate(
+  text: string,
+  kind: string | undefined,
+  status: string | undefined,
+  payloads: readonly unknown[]
+): boolean {
+  if (kind !== undefined && /(?:gate|verification|check)/i.test(kind)) return true;
+  if (status !== undefined && /^(passed|failed|skipped)$/i.test(status)) {
+    return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['package', 'packageName', 'packageId', 'packagePath', 'name', 'gate'], /package/i));
+  }
+  if (!/\bpackage\b/.test(text) || !/\bgate\b/.test(text)) return false;
+  return payloads.some((payload) => collectSwarmLifetimeGateRecords(payload).length > 0);
+}
+
+function looksLikeActiveWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(active|running|leased|working|in-?progress|inflight)$/.test(status.toLowerCase())) return true;
+  if (/\b(active|running|leased|working|in[- ]progress|inflight)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'lifecycle'], /^(active|running|leased|working|in-?progress|inflight)$/i));
+}
+
+function looksLikeCoordinatorReview(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(review|needs-review|coordinator-review|merge-review|pending-review)$/i.test(status)) return true;
+  if (/\b(coordinator review|needs review|merge review|pending review|review)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(review|needs-review|coordinator-review|merge-review|pending-review)$/i));
+}
+
+function looksLikeRerunWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(rerun|stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(rerun|stale-against-head|stale|rebase)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(rerun|stale-against-head|stale)$/i));
+}
+
+function looksLikeConflictWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i.test(status)) return true;
+  if (/\b(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i));
+}
+
+function looksLikeCommittedApplied(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(applied|committed)$/i.test(status)) return true;
+  if (/\b(applied|committed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(applied|committed)$/i));
+}
+
+function looksLikeCompletedHistory(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(ok|changed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i.test(status)) return true;
+  if (/\b(ok|changed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(ok|changed|rejected|skipped|recorded|accepted|resolved|completed|done|passed)$/i));
+}
+
+function looksLikeBlockedWork(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(blocked|failed|error)$/i.test(status)) return true;
+  if (/\b(blocked|failed|error)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(blocked|failed|error)$/i));
+}
+
+function swarmObservationFromArtifact(artifact: FrontierInspectArtifact): SwarmLifetimeObservation {
+  const payloads: unknown[] = [];
+  if (artifact.data !== undefined) payloads[payloads.length] = artifact.data;
+  if (artifact.metadata !== undefined) payloads[payloads.length] = artifact.metadata;
+  return {
+    id: artifact.id,
+    text: [
+      artifact.id,
+      artifact.kind,
+      artifact.summary,
+      artifact.sourcePackage,
+      artifact.package,
+      artifact.feature,
+      artifact.tags.join(' '),
+      artifact.files.join(' '),
+      artifact.resources.join(' '),
+      artifact.entryIds.join(' '),
+      artifact.recordIds.join(' ')
+    ].filter(Boolean).join(' '),
+    kind: artifact.kind,
+    sources: collectSwarmLifetimeSources(artifact.sourcePackage, artifact.package, artifact.files, artifact.resources),
+    payloads,
+    status: extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function swarmObservationFromEvent(event: FrontierInspectEvent): SwarmLifetimeObservation {
+  const payloads: unknown[] = [];
+  if (event.value !== undefined) payloads[payloads.length] = event.value;
+  if (event.metadata !== undefined) payloads[payloads.length] = event.metadata;
+  const text = [
+    event.id,
+    event.type,
+    event.label,
+    event.source,
+    event.sourcePackage,
+    event.package,
+    event.feature,
+    event.tags.join(' '),
+    event.file,
+    event.path,
+    event.resource,
+    event.selector,
+    event.routeId,
+    event.status,
+    event.severity
+  ].filter(Boolean).join(' ');
+  return {
+    id: event.id,
+    text,
+    kind: event.type,
+    sources: collectSwarmLifetimeSources(event.sourcePackage, event.package, [event.file], [event.resource, event.path, event.routeId, event.selector]),
+    payloads,
+    status: event.status ?? extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function swarmObservationFromEntry(entry: FrontierRegistryEntry): SwarmLifetimeObservation {
+  const payloads = [entry.metadata];
+  return {
+    id: entry.id,
+    text: [
+      entry.id,
+      entry.kind,
+      entry.description,
+      entry.package,
+      entry.feature,
+      (entry.tags ?? []).join(' '),
+      normalizeSourceFiles(entry).join(' '),
+      (entry.touches ?? []).join(' '),
+      (entry.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.dependsOn ?? []).join(' ')
+    ].filter(Boolean).join(' '),
+    kind: entry.kind,
+    sources: collectSwarmLifetimeSources(entry.package, undefined, normalizeSourceFiles(entry), entry.touches),
+    payloads,
+    status: extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function swarmObservationFromRecord(record: FrontierRegistryRecord): SwarmLifetimeObservation {
+  const payloads = [record.metadata];
+  return {
+    id: record.id,
+    text: [
+      record.id,
+      record.kind,
+      record.status,
+      record.error,
+      record.entryId,
+      record.durationMs === undefined ? undefined : String(record.durationMs),
+      (record.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (record.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' ')
+    ].filter(Boolean).join(' '),
+    kind: record.kind,
+    sources: collectSwarmLifetimeSources(undefined, undefined, [], []),
+    payloads,
+    status: record.status ?? extractSwarmLifetimeStatus(payloads)
+  };
+}
+
+function collectSwarmLifetimeSources(
+  sourcePackage: string | undefined,
+  packageName: string | undefined,
+  files: readonly (string | undefined)[] | undefined,
+  resources: readonly (string | undefined)[] | undefined
+): string[] {
+  const values: string[] = [];
+  if (sourcePackage !== undefined) addUnique(values, 'package:' + sourcePackage);
+  if (packageName !== undefined) addUnique(values, 'package:' + packageName);
+  for (const file of files ?? []) if (file !== undefined && file !== '') addUnique(values, 'file:' + file);
+  for (const resource of resources ?? []) if (resource !== undefined && resource !== '') addUnique(values, 'resource:' + resource);
+  return values.sort();
+}
+
+function extractSwarmLifetimeStatus(payloads: readonly unknown[]): string | undefined {
+  for (let i = 0; i < payloads.length; i++) {
+    const value = extractSwarmLifetimeStringField(payloads[i], ['status', 'state', 'resultStatus', 'outcome', 'lifecycle', 'phase']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function extractSwarmLifetimeStringField(value: unknown, keys: readonly string[]): string | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && raw !== '') return raw;
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractSwarmLifetimeStringField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractSwarmLifetimeStringField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+}
+
+function hasSwarmLifetimeStringField(
+  value: unknown,
+  keys: readonly string[],
+  matcher: RegExp
+): boolean {
+  if (!isRecord(value)) return false;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && matcher.test(raw)) return true;
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) if (hasSwarmLifetimeStringField(item, keys, matcher)) return true;
+      continue;
+    }
+    if (isRecord(child) && hasSwarmLifetimeStringField(child, keys, matcher)) return true;
+  }
+  return false;
+}
+
+function collectSwarmLifetimeBucket(
+  observations: readonly SwarmLifetimeObservation[],
+  options: {
+    id?: (observation: SwarmLifetimeObservation) => string | undefined;
+  } = {}
+): FrontierInspectSwarmLifetimeLiveBucketSummary {
+  const ids: string[] = [];
+  const sources: string[] = [];
+  for (const observation of observations) {
+    const id = options.id?.(observation) ?? observation.id;
+    if (id !== undefined && id !== '') addUnique(ids, id);
+    for (const source of observation.sources) addUnique(sources, source);
+  }
+  return {
+    count: ids.length,
+    ids: ids.sort(),
+    sources: sources.sort()
+  };
+}
+
+function extractSwarmLifetimeAgentId(observation: SwarmLifetimeObservation): string | undefined {
+  for (const payload of observation.payloads) {
+    const value = extractSwarmLifetimeStringField(payload, ['agentId', 'workerId', 'jobId', 'taskId', 'leaseId', 'runId']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function collectSwarmLifetimeHumanQuestions(
+  observations: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimeHumanQuestionSummary {
+  const bucket = collectSwarmLifetimeBucket(observations, {
+    id: (observation) => extractSwarmLifetimeQuestionId(observation) ?? observation.id
+  });
+  const reasons = uniqueStrings(observations.flatMap((observation) => extractSwarmLifetimeQuestionReasons(observation)));
+  return {
+    ...bucket,
+    reasons
+  };
+}
+
+function extractSwarmLifetimeQuestionId(observation: SwarmLifetimeObservation): string | undefined {
+  for (const payload of observation.payloads) {
+    const value = extractSwarmLifetimeStringField(payload, ['questionId', 'decisionId', 'jobId', 'taskId', 'queueItemId', 'id']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function extractSwarmLifetimeQuestionReasons(observation: SwarmLifetimeObservation): string[] {
+  const reasons: string[] = [];
+  for (const payload of observation.payloads) {
+    const directReason = extractSwarmLifetimeStringField(payload, ['reason', 'question', 'summary', 'message']);
+    if (directReason !== undefined) addUnique(reasons, directReason);
+    if (isRecord(payload)) {
+      for (const key of ['reason', 'question', 'summary', 'message']) {
+        const raw = payload[key];
+        if (typeof raw === 'string' && raw.startsWith('human-question:')) addUnique(reasons, raw);
+      }
+    }
+  }
+  if (reasons.length === 0 && /human-question:/.test(observation.text)) addUnique(reasons, observation.text.slice(observation.text.indexOf('human-question:')));
+  return reasons;
+}
+
+function collectSwarmLifetimePackageGates(
+  observations: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimePackageGateSummary {
+  const ids: string[] = [];
+  const sources: string[] = [];
+  const states: string[] = [];
+  let requiredCount = 0;
+  let passedCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  const seen = new Set<string>();
+  for (const observation of observations) {
+    for (const payload of observation.payloads) {
+      const gates = collectSwarmLifetimeGateRecords(payload);
+      if (gates.length === 0) continue;
+      for (const gate of gates) {
+        const key = observation.id + '|' + gate.id + '|' + (gate.state ?? '') + '|' + String(gate.required ?? '');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        addUnique(ids, gate.id);
+        for (const source of observation.sources) addUnique(sources, source);
+        if (gate.state !== undefined) addUnique(states, gate.state);
+        if (gate.required === true) requiredCount++;
+        if (gate.state === 'passed') passedCount++;
+        else if (gate.state === 'failed') failedCount++;
+        else if (gate.state === 'skipped') skippedCount++;
+      }
+    }
+  }
+  return {
+    count: ids.length,
+    ids: ids.sort(),
+    sources: sources.sort(),
+    states: states.sort(),
+    requiredCount,
+    passedCount,
+    failedCount,
+    skippedCount
+  };
+}
+
+function collectSwarmLifetimeSuppressedAuditArtifacts(
+  observations: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimeSuppressedAuditArtifactSummary {
+  const bucket = collectSwarmLifetimeBucket(observations);
+  const reasons = uniqueStrings(observations.flatMap((observation) => extractSwarmLifetimeSuppressedAuditReasons(observation)));
+  return {
+    ...bucket,
+    reasons
+  };
+}
+
+function extractSwarmLifetimeSuppressedAuditReasons(observation: SwarmLifetimeObservation): string[] {
+  const reasons: string[] = [];
+  if (observation.kind !== undefined) addUnique(reasons, observation.kind);
+  if (observation.status !== undefined) addUnique(reasons, observation.status);
+  for (const payload of observation.payloads) {
+    const directReason = extractSwarmLifetimeStringField(payload, ['reason', 'summary', 'message', 'kind', 'status', 'state']);
+    if (directReason !== undefined) addUnique(reasons, directReason);
+  }
+  return reasons;
+}
+
+function collectSwarmLifetimeReviewDebt(
+  review: readonly SwarmLifetimeObservation[],
+  rerun: readonly SwarmLifetimeObservation[]
+): FrontierInspectSwarmLifetimeReviewDebtSummary {
+  const ids = uniqueStrings(review.concat(rerun).map((observation) => observation.id));
+  const sources = uniqueStrings(review.concat(rerun).flatMap((observation) => observation.sources));
+  return {
+    count: review.length + rerun.length,
+    coordinatorReviewCount: review.length,
+    rerunWorkCount: rerun.length,
+    ids,
+    sources
+  };
+}
+
+interface SwarmLifetimeGateRecord {
+  id: string;
+  state?: string;
+  required?: boolean;
+}
+
+function collectSwarmLifetimeGateRecords(value: unknown): SwarmLifetimeGateRecord[] {
+  const records: SwarmLifetimeGateRecord[] = [];
+  collectSwarmLifetimeGateRecordsInto(value, records);
+  return records;
+}
+
+function collectSwarmLifetimeGateRecordsInto(value: unknown, records: SwarmLifetimeGateRecord[]): void {
+  if (!isRecord(value)) return;
+  const gateSources = [
+    value,
+    value.finalGateSummary,
+    value.gateSummary,
+    value.verification,
+    value.gates
+  ];
+  for (const source of gateSources) {
+    if (!isRecord(source)) continue;
+    const directGate = extractSwarmLifetimeGateRecord(source);
+    if (directGate !== undefined) records[records.length] = directGate;
+    const nestedGates = source.gates;
+    if (Array.isArray(nestedGates)) {
+      for (const gate of nestedGates) {
+        const nestedGate = extractSwarmLifetimeGateRecord(gate);
+        if (nestedGate !== undefined) records[records.length] = nestedGate;
+      }
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) collectSwarmLifetimeGateRecordsInto(item, records);
+      continue;
+    }
+    if (isRecord(child)) collectSwarmLifetimeGateRecordsInto(child, records);
+  }
+}
+
+function extractSwarmLifetimeGateRecord(value: unknown): SwarmLifetimeGateRecord | undefined {
+  if (!isRecord(value)) return undefined;
+  const id = extractSwarmLifetimeStringField(value, ['id', 'name', 'gate', 'label', 'title']);
+  const state = extractSwarmLifetimeStringField(value, ['status', 'state', 'resultStatus', 'outcome', 'phase']);
+  const required = extractSwarmLifetimeBooleanField(value, ['required', 'mandatory']);
+  if (id === undefined && state === undefined && required === undefined) return undefined;
+  return {
+    id: id ?? state ?? 'gate',
+    state,
+    required
+  };
+}
+
+function extractSwarmLifetimeBooleanField(value: unknown, keys: readonly string[]): boolean | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'boolean') return raw;
+    if (typeof raw === 'string') {
+      if (/^(true|yes|required|required-gate|mandatory)$/i.test(raw)) return true;
+      if (/^(false|no|optional)$/i.test(raw)) return false;
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractSwarmLifetimeBooleanField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractSwarmLifetimeBooleanField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+}
+
+function collectSwarmLifetimeCost(observations: readonly SwarmLifetimeObservation[]): FrontierInspectSwarmLifetimeCostSummary | undefined {
+  let known = false;
+  const sources: string[] = [];
+  let inputTokens: number | undefined;
+  let cachedInputTokens: number | undefined;
+  let uncachedInputTokens: number | undefined;
+  let outputTokens: number | undefined;
+  let totalTokens: number | undefined;
+  let estimatedCostUsd: number | undefined;
+
+  for (const observation of observations) {
+    for (const payload of observation.payloads) {
+      const metrics = extractSwarmLifetimeCostMetrics(payload);
+      if (metrics === undefined) continue;
+      known = true;
+      for (const source of observation.sources) addUnique(sources, source);
+      inputTokens = sumOptionalNumbers(inputTokens, metrics.inputTokens);
+      cachedInputTokens = sumOptionalNumbers(cachedInputTokens, metrics.cachedInputTokens);
+      uncachedInputTokens = sumOptionalNumbers(uncachedInputTokens, metrics.uncachedInputTokens);
+      outputTokens = sumOptionalNumbers(outputTokens, metrics.outputTokens);
+      totalTokens = sumOptionalNumbers(totalTokens, metrics.totalTokens);
+      estimatedCostUsd = sumOptionalNumbers(estimatedCostUsd, metrics.estimatedCostUsd);
+    }
+  }
+
+  if (!known) return undefined;
+  return {
+    known,
+    inputTokens,
+    cachedInputTokens,
+    uncachedInputTokens,
+    outputTokens,
+    totalTokens,
+    estimatedCostUsd,
+    sourceCount: sources.length,
+    sources: sources.sort()
+  };
+}
+
+function collectSwarmLifetimeModelPerformance(
+  observations: SwarmLifetimeObservations
+): FrontierInspectSwarmLifetimeModelPerformanceSummary {
+  const samples = collectSwarmLifetimePerformanceSamples(observations);
+  const root = createSwarmLifetimePerformanceAggregate();
+  const byModel = new Map<string, MutableSwarmLifetimePerformanceModelSummary>();
+  const modelKeys = new Set<string>();
+  const computeTierKeys = new Set<string>();
+  const taskKindKeys = new Set<string>();
+
+  for (const sample of samples) {
+    mergeSwarmLifetimePerformanceAggregate(root, sample);
+    const modelSummary = getMutableSwarmLifetimePerformanceModelSummary(byModel, sample.model);
+    mergeSwarmLifetimePerformanceAggregate(modelSummary, sample);
+    modelKeys.add(sample.model);
+
+    const computeTierKey = sample.model + '|' + sample.computeTier;
+    const computeTierSummary = getMutableSwarmLifetimePerformanceComputeTierSummary(modelSummary.byComputeTier, sample.computeTier);
+    computeTierSummary.model = sample.model;
+    mergeSwarmLifetimePerformanceAggregate(computeTierSummary, sample);
+    computeTierKeys.add(computeTierKey);
+
+    const taskKindKey = computeTierKey + '|' + sample.taskKind;
+    const taskKindSummary = getMutableSwarmLifetimePerformanceTaskKindSummary(computeTierSummary.byTaskKind, sample.taskKind);
+    taskKindSummary.model = sample.model;
+    taskKindSummary.computeTier = sample.computeTier;
+    mergeSwarmLifetimePerformanceAggregate(taskKindSummary, sample);
+    taskKindKeys.add(taskKindKey);
+  }
+
+  return {
+    ...finalizeSwarmLifetimePerformanceSummary(root),
+    modelCount: modelKeys.size,
+    computeTierCount: computeTierKeys.size,
+    taskKindCount: taskKindKeys.size,
+    byModel: Array.from(byModel.values())
+      .sort((left, right) => left.model.localeCompare(right.model))
+      .map((summary) => finalizeSwarmLifetimePerformanceModelSummary(summary))
+  };
+}
+
+interface SwarmLifetimePerformanceSample {
+  model: string;
+  computeTier: string;
+  taskKind: string;
+  sources: string[];
+  runtimeMs?: number;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  usefulOutput: boolean;
+  rerun: boolean;
+  stale: boolean;
+  reject: boolean;
+  cheapSuccess: boolean;
+  expensiveSuccess: boolean;
+  escalationBenefit: boolean;
+  missingPricingReason?: string;
+}
+
+interface MutableSwarmLifetimePerformanceAggregate {
+  count: number;
+  successCount: number;
+  usefulOutputCount: number;
+  rerunCount: number;
+  staleCount: number;
+  rejectCount: number;
+  cheapSuccessCount: number;
+  expensiveSuccessCount: number;
+  escalationBenefitCount: number;
+  missingPricingCount: number;
+  missingPricingReasons: string[];
+  runtimeCount: number;
+  runtimeTotalMs?: number;
+  runtimeMinMs?: number;
+  runtimeMaxMs?: number;
+  costKnownCount: number;
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  sources: string[];
+}
+
+interface MutableSwarmLifetimePerformanceTaskKindSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  computeTier: string;
+  taskKind: string;
+}
+
+interface MutableSwarmLifetimePerformanceComputeTierSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  computeTier: string;
+  byTaskKind: Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>;
+}
+
+interface MutableSwarmLifetimePerformanceModelSummary extends MutableSwarmLifetimePerformanceAggregate {
+  model: string;
+  byComputeTier: Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>;
+}
+
+function collectSwarmLifetimePerformanceSamples(
+  observations: SwarmLifetimeObservations
+): SwarmLifetimePerformanceSample[] {
+  const samples: SwarmLifetimePerformanceSample[] = [];
+  for (const observation of observations.costCandidates) {
+    const sample = collectSwarmLifetimePerformanceSample(observation);
+    if (sample !== undefined) samples[samples.length] = sample;
+  }
+  return samples;
+}
+
+function collectSwarmLifetimePerformanceSample(observation: SwarmLifetimeObservation): SwarmLifetimePerformanceSample | undefined {
+  const payloads = observation.payloads;
+  const model = firstSwarmLifetimeStringField(payloads, ['modelId', 'model', 'pricingModel']);
+  const computeTier = firstSwarmLifetimeStringField(payloads, ['computeTier', 'serviceTier', 'tier', 'compute']);
+  const rawTaskKind = firstSwarmLifetimeStringField(payloads, ['taskKind', 'workKind', 'kind']);
+  const taskKind = rawTaskKind !== undefined && !isSwarmLifetimeGenericTaskKind(rawTaskKind) ? rawTaskKind : undefined;
+  const runtimeMs = firstSwarmLifetimeNumberField(payloads, ['runtimeMs', 'runtime_ms', 'durationMs', 'duration_ms']);
+  const inputTokens = firstSwarmLifetimeNumberField(payloads, ['inputTokens', 'input_tokens', 'promptTokens', 'prompt_tokens']);
+  const cachedInputTokens = firstSwarmLifetimeNumberField(payloads, ['cachedInputTokens', 'cached_input_tokens', 'inputCachedTokens', 'input_cached_tokens', 'promptCachedTokens', 'prompt_cached_tokens']);
+  const uncachedInputTokens = firstSwarmLifetimeNumberField(payloads, ['uncachedInputTokens', 'uncached_input_tokens', 'inputUncachedTokens', 'input_uncached_tokens']);
+  const outputTokens = firstSwarmLifetimeNumberField(payloads, ['outputTokens', 'output_tokens', 'completionTokens', 'completion_tokens']);
+  const totalTokens = firstSwarmLifetimeNumberField(payloads, ['totalTokens', 'total_tokens']);
+  const explicitEstimatedCostUsd = firstSwarmLifetimeNumberField(payloads, ['estimatedCostUsd', 'estimated_cost_usd', 'totalCost', 'total_cost']);
+  const hasPricing = hasSwarmLifetimePricing(payloads);
+  const pricing = readSwarmLifetimePricing(payloads);
+  const normalizedUsage = normalizeSwarmLifetimeUsage({
+    inputTokens,
+    cachedInputTokens,
+    uncachedInputTokens,
+    outputTokens,
+    totalTokens
+  });
+  let estimatedCostUsd = explicitEstimatedCostUsd;
+  if (estimatedCostUsd === undefined && pricing !== undefined) {
+    estimatedCostUsd = estimateSwarmLifetimeUsageCost(normalizedUsage, pricing);
+  }
+  const usefulOutput = looksLikeSwarmLifetimeUsefulOutput(observation.text, observation.status, payloads);
+  const rerun = looksLikeRerunWork(observation.text, observation.status, payloads);
+  const stale = looksLikeSwarmLifetimeStale(observation.text, observation.status, payloads);
+  const reject = looksLikeSwarmLifetimeReject(observation.text, observation.status, payloads);
+  const wasteFlags = uniqueStrings(payloads.flatMap((payload) => extractSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteFlags', 'wasteReasons', 'flags'])));
+  const hasWasteSignals = rerun || stale || reject || wasteFlags.length > 0;
+  const hasPerformanceSignal =
+    model !== undefined ||
+    computeTier !== undefined ||
+    taskKind !== undefined ||
+    runtimeMs !== undefined ||
+    normalizedUsage.inputTokens !== undefined ||
+    normalizedUsage.cachedInputTokens !== undefined ||
+    normalizedUsage.uncachedInputTokens !== undefined ||
+    normalizedUsage.outputTokens !== undefined ||
+    normalizedUsage.totalTokens !== undefined ||
+    estimatedCostUsd !== undefined ||
+    hasPricing ||
+    wasteFlags.length > 0;
+  const missingPricingReason = (estimatedCostUsd === undefined && (hasPricing || normalizedUsage.inputTokens !== undefined || normalizedUsage.outputTokens !== undefined || runtimeMs !== undefined))
+    ? (hasPricing ? 'missing-token-usage' : 'missing-pricing')
+    : undefined;
+  if (!hasPerformanceSignal) {
+    return undefined;
+  }
+  const costKnown = estimatedCostUsd !== undefined;
+  const cheapSuccess = usefulOutput && costKnown && !hasWasteSignals;
+  const expensiveSuccess = usefulOutput && !cheapSuccess;
+  return {
+    model: model ?? 'unknown',
+    computeTier: computeTier ?? 'unknown',
+    taskKind: taskKind ?? 'unknown',
+    sources: observation.sources,
+    runtimeMs,
+    ...normalizedUsage,
+    ...(estimatedCostUsd !== undefined ? { estimatedCostUsd } : {}),
+    usefulOutput,
+    rerun,
+    stale,
+    reject,
+    cheapSuccess,
+    expensiveSuccess,
+    escalationBenefit: usefulOutput && hasWasteSignals,
+    ...(missingPricingReason ? { missingPricingReason } : {})
+  };
+}
+
+function firstSwarmLifetimeStringField(payloads: readonly unknown[], keys: readonly string[]): string | undefined {
+  for (const payload of payloads) {
+    const value = extractSwarmLifetimeStringField(payload, keys);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function firstSwarmLifetimeNumberField(payloads: readonly unknown[], keys: readonly string[]): number | undefined {
+  for (const payload of payloads) {
+    const value = extractSwarmLifetimeNumberField(payload, keys);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function isSwarmLifetimeGenericTaskKind(value: string): boolean {
+  return /^(agent-usage|audit|collection(?:-row)?|coordinator-gate|decision|event|frontier\..*|gate|human-question|package-gate|telemetry|worker-run|worker-result)$/i.test(value);
+}
+
+function extractSwarmLifetimeStringArrayField(value: unknown, keys: readonly string[]): string[] {
+  if (!isRecord(value)) return [];
+  const values: string[] = [];
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && raw !== '') addUnique(values, raw);
+    else if (Array.isArray(raw)) {
+      for (const item of raw) {
+        if (typeof item === 'string' && item !== '') addUnique(values, item);
+      }
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (isRecord(item)) {
+          for (const nested of extractSwarmLifetimeStringArrayField(item, keys)) addUnique(values, nested);
+        }
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      for (const nested of extractSwarmLifetimeStringArrayField(child, keys)) addUnique(values, nested);
+    }
+  }
+  return values;
+}
+
+interface SwarmLifetimeUsageTotals {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+}
+
+function normalizeSwarmLifetimeUsage(input: SwarmLifetimeUsageTotals): SwarmLifetimeUsageTotals {
+  let inputTokens = input.inputTokens;
+  let cachedInputTokens = input.cachedInputTokens;
+  let uncachedInputTokens = input.uncachedInputTokens;
+  const outputTokens = input.outputTokens;
+  let totalTokens = input.totalTokens;
+
+  if (inputTokens === undefined && (cachedInputTokens !== undefined || uncachedInputTokens !== undefined)) {
+    inputTokens = (cachedInputTokens || 0) + (uncachedInputTokens || 0);
+  }
+  if (uncachedInputTokens === undefined && inputTokens !== undefined && cachedInputTokens !== undefined) {
+    uncachedInputTokens = Math.max(0, inputTokens - cachedInputTokens);
+  }
+  if (totalTokens === undefined && (inputTokens !== undefined || outputTokens !== undefined)) {
+    totalTokens = (inputTokens || 0) + (outputTokens || 0);
+  }
+
+  return {
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(cachedInputTokens !== undefined ? { cachedInputTokens } : {}),
+    ...(uncachedInputTokens !== undefined ? { uncachedInputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(totalTokens !== undefined ? { totalTokens } : {})
+  };
+}
+
+interface SwarmLifetimePricingInput {
+  currency?: string;
+  inputCostPerUnit?: number;
+  cachedInputCostPerUnit?: number;
+  outputCostPerUnit?: number;
+  unitTokens?: number;
+}
+
+function hasSwarmLifetimePricing(payloads: readonly unknown[]): boolean {
+  return readSwarmLifetimePricing(payloads) !== undefined;
+}
+
+function readSwarmLifetimePricing(payloads: readonly unknown[]): SwarmLifetimePricingInput | undefined {
+  for (const payload of payloads) {
+    if (!isRecord(payload)) continue;
+    const candidates = [payload, payload.pricing, payload.cost, payload.modelPricing];
+    for (const candidate of candidates) {
+      if (!isRecord(candidate)) continue;
+      const currency = firstSwarmLifetimeStringField([candidate], ['currency']);
+      const inputCostPerUnit = firstSwarmLifetimeNumberField([candidate], ['inputCostPerUnit', 'input_cost_per_unit']);
+      const cachedInputCostPerUnit = firstSwarmLifetimeNumberField([candidate], ['cachedInputCostPerUnit', 'cached_input_cost_per_unit']);
+      const outputCostPerUnit = firstSwarmLifetimeNumberField([candidate], ['outputCostPerUnit', 'output_cost_per_unit']);
+      const unitTokens = firstSwarmLifetimeNumberField([candidate], ['unitTokens', 'unit_tokens']);
+      if (
+        currency !== undefined ||
+        inputCostPerUnit !== undefined ||
+        cachedInputCostPerUnit !== undefined ||
+        outputCostPerUnit !== undefined ||
+        unitTokens !== undefined
+      ) {
+        return {
+          ...(currency !== undefined ? { currency } : {}),
+          ...(inputCostPerUnit !== undefined ? { inputCostPerUnit } : {}),
+          ...(cachedInputCostPerUnit !== undefined ? { cachedInputCostPerUnit } : {}),
+          ...(outputCostPerUnit !== undefined ? { outputCostPerUnit } : {}),
+          ...(unitTokens !== undefined ? { unitTokens } : {})
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
+function estimateSwarmLifetimeUsageCost(
+  usage: SwarmLifetimeUsageTotals,
+  pricing: SwarmLifetimePricingInput
+): number | undefined {
+  const unitTokens = pricing.unitTokens && pricing.unitTokens > 0 ? pricing.unitTokens : 1;
+  const inputTokens = usage.inputTokens;
+  const cachedInputTokens = usage.cachedInputTokens;
+  const uncachedInputTokens = usage.uncachedInputTokens ?? (
+    inputTokens !== undefined && cachedInputTokens !== undefined ? Math.max(0, inputTokens - cachedInputTokens) : undefined
+  );
+  const outputTokens = usage.outputTokens;
+  const inputCostPerUnit = pricing.inputCostPerUnit;
+  const cachedInputCostPerUnit = pricing.cachedInputCostPerUnit;
+  const outputCostPerUnit = pricing.outputCostPerUnit;
+  let inputCost: number | undefined;
+  let cachedInputCost: number | undefined;
+  let uncachedInputCost: number | undefined;
+  let outputCost: number | undefined;
+
+  if (cachedInputTokens !== undefined && cachedInputCostPerUnit !== undefined) {
+    cachedInputCost = (cachedInputTokens * cachedInputCostPerUnit) / unitTokens;
+  }
+  if (uncachedInputTokens !== undefined && inputCostPerUnit !== undefined) {
+    uncachedInputCost = (uncachedInputTokens * inputCostPerUnit) / unitTokens;
+  } else if (cachedInputTokens === undefined && inputTokens !== undefined && inputCostPerUnit !== undefined) {
+    inputCost = (inputTokens * inputCostPerUnit) / unitTokens;
+  }
+  if (cachedInputCost !== undefined || uncachedInputCost !== undefined) {
+    inputCost = (cachedInputCost || 0) + (uncachedInputCost || 0);
+  }
+  if (outputTokens !== undefined && outputCostPerUnit !== undefined) {
+    outputCost = (outputTokens * outputCostPerUnit) / unitTokens;
+  }
+  const totalCost = sumOptionalNumbers(inputCost, outputCost);
+  return totalCost === undefined ? undefined : roundUsd(totalCost);
+}
+
+function looksLikeSwarmLifetimeUsefulOutput(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(ok|changed|skipped|recorded|accepted|resolved|completed|done|passed|applied|committed|success)$/i.test(status)) return true;
+  if (/\b(ok|changed|skipped|recorded|accepted|resolved|completed|done|passed|applied|committed|success)\b/.test(text)) return true;
+  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(ok|changed|skipped|recorded|accepted|resolved|completed|done|passed|applied|committed|success)$/i));
+}
+
+function looksLikeSwarmLifetimeStale(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(stale-against-head|stale|rebase)\b/.test(text)) return true;
+  return payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(stale-against-head|stale)$/i)
+    || hasSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteReasons', 'flags'], /(?:stale|rerun|rebase)/i)
+  );
+}
+
+function looksLikeSwarmLifetimeReject(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
+  if (status !== undefined && /^(rejected|blocked|failed|error)$/i.test(status)) return true;
+  if (/\b(rejected|blocked|failed|error)\b/.test(text)) return true;
+  return payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(rejected|blocked|failed|error)$/i)
+    || hasSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteReasons', 'flags'], /(?:rejected|blocked|failed|error)/i)
+  );
+}
+
+function hasSwarmLifetimeStringArrayField(
+  value: unknown,
+  keys: readonly string[],
+  matcher: RegExp
+): boolean {
+  if (!isRecord(value)) return false;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'string' && matcher.test(raw)) return true;
+    if (Array.isArray(raw)) {
+      for (const item of raw) if (typeof item === 'string' && matcher.test(item)) return true;
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (isRecord(item) && hasSwarmLifetimeStringArrayField(item, keys, matcher)) return true;
+        if (typeof item === 'string' && matcher.test(item)) return true;
+      }
+      continue;
+    }
+    if (isRecord(child) && hasSwarmLifetimeStringArrayField(child, keys, matcher)) return true;
+  }
+  return false;
+}
+
+interface MutableSwarmLifetimePerformanceSummary extends MutableSwarmLifetimePerformanceAggregate {
+  byModel: Map<string, MutableSwarmLifetimePerformanceModelSummary>;
+}
+
+function createSwarmLifetimePerformanceAggregate(): MutableSwarmLifetimePerformanceSummary {
+  return {
+    count: 0,
+    successCount: 0,
+    usefulOutputCount: 0,
+    rerunCount: 0,
+    staleCount: 0,
+    rejectCount: 0,
+    cheapSuccessCount: 0,
+    expensiveSuccessCount: 0,
+    escalationBenefitCount: 0,
+    missingPricingCount: 0,
+    missingPricingReasons: [],
+    runtimeCount: 0,
+    costKnownCount: 0,
+    sources: [],
+    byModel: new Map<string, MutableSwarmLifetimePerformanceModelSummary>()
+  };
+}
+
+function getMutableSwarmLifetimePerformanceModelSummary(
+  byModel: Map<string, MutableSwarmLifetimePerformanceModelSummary>,
+  model: string
+): MutableSwarmLifetimePerformanceModelSummary {
+  let summary = byModel.get(model);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model,
+    byComputeTier: new Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>()
+  };
+  byModel.set(model, summary);
+  return summary;
+}
+
+function getMutableSwarmLifetimePerformanceComputeTierSummary(
+  byComputeTier: Map<string, MutableSwarmLifetimePerformanceComputeTierSummary>,
+  computeTier: string
+): MutableSwarmLifetimePerformanceComputeTierSummary {
+  let summary = byComputeTier.get(computeTier);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model: 'unknown',
+    computeTier,
+    byTaskKind: new Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>()
+  };
+  byComputeTier.set(computeTier, summary);
+  return summary;
+}
+
+function getMutableSwarmLifetimePerformanceTaskKindSummary(
+  byTaskKind: Map<string, MutableSwarmLifetimePerformanceTaskKindSummary>,
+  taskKind: string
+): MutableSwarmLifetimePerformanceTaskKindSummary {
+  let summary = byTaskKind.get(taskKind);
+  if (summary !== undefined) return summary;
+  summary = {
+    ...createSwarmLifetimePerformanceAggregate(),
+    model: 'unknown',
+    computeTier: 'unknown',
+    taskKind
+  };
+  byTaskKind.set(taskKind, summary);
+  return summary;
+}
+
+function mergeSwarmLifetimePerformanceAggregate(
+  aggregate: MutableSwarmLifetimePerformanceAggregate,
+  sample: SwarmLifetimePerformanceSample
+): void {
+  aggregate.count++;
+  if (sample.usefulOutput) {
+    aggregate.successCount++;
+    aggregate.usefulOutputCount++;
+    if (sample.cheapSuccess) aggregate.cheapSuccessCount++;
+    if (sample.expensiveSuccess) aggregate.expensiveSuccessCount++;
+    if (sample.escalationBenefit) aggregate.escalationBenefitCount++;
+  }
+  if (sample.rerun) aggregate.rerunCount++;
+  if (sample.stale) aggregate.staleCount++;
+  if (sample.reject) aggregate.rejectCount++;
+  if (sample.missingPricingReason !== undefined) {
+    aggregate.missingPricingCount++;
+    addUnique(aggregate.missingPricingReasons, sample.missingPricingReason);
+  }
+  if (sample.runtimeMs !== undefined) {
+    aggregate.runtimeCount++;
+    aggregate.runtimeTotalMs = sumOptionalNumbers(aggregate.runtimeTotalMs, sample.runtimeMs);
+    aggregate.runtimeMinMs = aggregate.runtimeMinMs === undefined ? sample.runtimeMs : Math.min(aggregate.runtimeMinMs, sample.runtimeMs);
+    aggregate.runtimeMaxMs = aggregate.runtimeMaxMs === undefined ? sample.runtimeMs : Math.max(aggregate.runtimeMaxMs, sample.runtimeMs);
+  }
+  if (sample.estimatedCostUsd !== undefined) {
+    aggregate.costKnownCount++;
+    aggregate.estimatedCostUsd = sumOptionalNumbers(aggregate.estimatedCostUsd, sample.estimatedCostUsd);
+  }
+  aggregate.inputTokens = sumOptionalNumbers(aggregate.inputTokens, sample.inputTokens);
+  aggregate.cachedInputTokens = sumOptionalNumbers(aggregate.cachedInputTokens, sample.cachedInputTokens);
+  aggregate.uncachedInputTokens = sumOptionalNumbers(aggregate.uncachedInputTokens, sample.uncachedInputTokens);
+  aggregate.outputTokens = sumOptionalNumbers(aggregate.outputTokens, sample.outputTokens);
+  aggregate.totalTokens = sumOptionalNumbers(aggregate.totalTokens, sample.totalTokens);
+  for (const source of sample.sources) addUnique(aggregate.sources, source);
+}
+
+function finalizeSwarmLifetimePerformanceSummary(
+  aggregate: MutableSwarmLifetimePerformanceAggregate
+): FrontierInspectSwarmLifetimePerformanceSummaryBase {
+  const wasteCount = Math.max(0, aggregate.count - aggregate.usefulOutputCount);
+  return {
+    count: aggregate.count,
+    successCount: aggregate.successCount,
+    usefulOutputCount: aggregate.usefulOutputCount,
+    rerunCount: aggregate.rerunCount,
+    staleCount: aggregate.staleCount,
+    rejectCount: aggregate.rejectCount,
+    cheapSuccessCount: aggregate.cheapSuccessCount,
+    expensiveSuccessCount: aggregate.expensiveSuccessCount,
+    wasteCount,
+    escalationBenefitCount: aggregate.escalationBenefitCount,
+    successRate: rateForCount(aggregate.successCount, aggregate.count),
+    usefulOutputRate: rateForCount(aggregate.usefulOutputCount, aggregate.count),
+    rerunRate: rateForCount(aggregate.rerunCount, aggregate.count),
+    staleRate: rateForCount(aggregate.staleCount, aggregate.count),
+    rejectRate: rateForCount(aggregate.rejectCount, aggregate.count),
+    cheapSuccessRate: rateForCount(aggregate.cheapSuccessCount, aggregate.count),
+    expensiveSuccessRate: rateForCount(aggregate.expensiveSuccessCount, aggregate.count),
+    wasteRate: rateForCount(wasteCount, aggregate.count),
+    escalationBenefitRate: rateForCount(aggregate.escalationBenefitCount, aggregate.count),
+    missingPricingCount: aggregate.missingPricingCount,
+    missingPricingReasons: aggregate.missingPricingReasons.sort(),
+    runtimeMs: finalizeSwarmLifetimeRuntimeSummary(aggregate),
+    cost: finalizeSwarmLifetimeCostSummary(aggregate)
+  };
+}
+
+function finalizeSwarmLifetimePerformanceModelSummary(
+  aggregate: MutableSwarmLifetimePerformanceModelSummary
+): FrontierInspectSwarmLifetimePerformanceModelSummary {
+  return {
+    model: aggregate.model,
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate),
+    byComputeTier: Array.from(aggregate.byComputeTier.values())
+      .sort((left, right) => left.computeTier.localeCompare(right.computeTier))
+      .map((summary) => finalizeSwarmLifetimePerformanceComputeTierSummary(summary))
+  };
+}
+
+function finalizeSwarmLifetimePerformanceComputeTierSummary(
+  aggregate: MutableSwarmLifetimePerformanceComputeTierSummary
+): FrontierInspectSwarmLifetimePerformanceComputeTierSummary {
+  return {
+    model: aggregate.model,
+    computeTier: aggregate.computeTier,
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate),
+    byTaskKind: Array.from(aggregate.byTaskKind.values())
+      .sort((left, right) => left.taskKind.localeCompare(right.taskKind))
+      .map((summary) => finalizeSwarmLifetimePerformanceTaskKindSummary(summary))
+  };
+}
+
+function finalizeSwarmLifetimePerformanceTaskKindSummary(
+  aggregate: MutableSwarmLifetimePerformanceTaskKindSummary
+): FrontierInspectSwarmLifetimePerformanceTaskKindSummary {
+  return {
+    model: aggregate.model,
+    computeTier: aggregate.computeTier,
+    taskKind: aggregate.taskKind,
+    ...finalizeSwarmLifetimePerformanceSummary(aggregate)
+  };
+}
+
+function finalizeSwarmLifetimeRuntimeSummary(
+  aggregate: MutableSwarmLifetimePerformanceAggregate
+): FrontierInspectSwarmLifetimeRuntimeSummary {
+  if (aggregate.runtimeCount === 0) return { count: 0 };
+  return {
+    count: aggregate.runtimeCount,
+    totalMs: aggregate.runtimeTotalMs,
+    averageMs: aggregate.runtimeTotalMs === undefined ? undefined : aggregate.runtimeTotalMs / aggregate.runtimeCount,
+    minMs: aggregate.runtimeMinMs,
+    maxMs: aggregate.runtimeMaxMs
+  };
+}
+
+function finalizeSwarmLifetimeCostSummary(
+  aggregate: MutableSwarmLifetimePerformanceAggregate
+): FrontierInspectSwarmLifetimeCostSummary | undefined {
+  const hasAnyCostData =
+    aggregate.inputTokens !== undefined ||
+    aggregate.cachedInputTokens !== undefined ||
+    aggregate.uncachedInputTokens !== undefined ||
+    aggregate.outputTokens !== undefined ||
+    aggregate.totalTokens !== undefined ||
+    aggregate.estimatedCostUsd !== undefined ||
+    aggregate.costKnownCount > 0;
+  if (!hasAnyCostData) return undefined;
+  return {
+    known: aggregate.costKnownCount > 0,
+    ...(aggregate.inputTokens !== undefined ? { inputTokens: aggregate.inputTokens } : {}),
+    ...(aggregate.cachedInputTokens !== undefined ? { cachedInputTokens: aggregate.cachedInputTokens } : {}),
+    ...(aggregate.uncachedInputTokens !== undefined ? { uncachedInputTokens: aggregate.uncachedInputTokens } : {}),
+    ...(aggregate.outputTokens !== undefined ? { outputTokens: aggregate.outputTokens } : {}),
+    ...(aggregate.totalTokens !== undefined ? { totalTokens: aggregate.totalTokens } : {}),
+    ...(aggregate.estimatedCostUsd !== undefined ? { estimatedCostUsd: roundUsd(aggregate.estimatedCostUsd) } : {}),
+    sourceCount: aggregate.sources.length,
+    sources: aggregate.sources.sort()
+  };
+}
+
+function roundUsd(value: number): number {
+  const rounded = Math.round((value + Number.EPSILON) * 1_000_000_000_000) / 1_000_000_000_000;
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+function rateForCount(count: number, total: number): number {
+  return total === 0 ? 0 : count / total;
+}
+
+interface SwarmLifetimeCostMetrics {
+  inputTokens?: number;
+  cachedInputTokens?: number;
+  uncachedInputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+}
+
+function extractSwarmLifetimeCostMetrics(value: unknown): SwarmLifetimeCostMetrics | undefined {
+  if (!isRecord(value)) return undefined;
+  const metrics: SwarmLifetimeCostMetrics = {};
+  const directSources = [value, value.usage, value.cost, value.tokens, value.telemetry];
+  for (const source of directSources) {
+    if (!isRecord(source)) continue;
+    const inputTokens = extractSwarmLifetimeNumberField(source, ['inputTokens', 'input_tokens', 'promptTokens', 'prompt_tokens']);
+    const cachedInputTokens = extractSwarmLifetimeNumberField(source, ['cachedInputTokens', 'cached_input_tokens', 'inputCachedTokens', 'input_cached_tokens', 'promptCachedTokens', 'prompt_cached_tokens']);
+    const uncachedInputTokens = extractSwarmLifetimeNumberField(source, ['uncachedInputTokens', 'uncached_input_tokens', 'inputUncachedTokens', 'input_uncached_tokens']);
+    const outputTokens = extractSwarmLifetimeNumberField(source, ['outputTokens', 'output_tokens', 'completionTokens', 'completion_tokens']);
+    const totalTokens = extractSwarmLifetimeNumberField(source, ['totalTokens', 'total_tokens']);
+    const estimatedCostUsd = extractSwarmLifetimeNumberField(source, ['estimatedCostUsd', 'estimated_cost_usd', 'costUsd', 'usd']);
+    if (
+      inputTokens !== undefined ||
+      cachedInputTokens !== undefined ||
+      uncachedInputTokens !== undefined ||
+      outputTokens !== undefined ||
+      totalTokens !== undefined ||
+      estimatedCostUsd !== undefined
+    ) {
+      if (inputTokens !== undefined) metrics.inputTokens = inputTokens;
+      if (cachedInputTokens !== undefined) metrics.cachedInputTokens = cachedInputTokens;
+      if (uncachedInputTokens !== undefined) metrics.uncachedInputTokens = uncachedInputTokens;
+      if (outputTokens !== undefined) metrics.outputTokens = outputTokens;
+      if (totalTokens !== undefined) metrics.totalTokens = totalTokens;
+      if (estimatedCostUsd !== undefined) metrics.estimatedCostUsd = estimatedCostUsd;
+      return metrics;
+    }
+  }
+  return undefined;
+}
+
+function extractSwarmLifetimeNumberField(value: unknown, keys: readonly string[]): number | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+    if (typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))) return Number(raw);
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractSwarmLifetimeNumberField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractSwarmLifetimeNumberField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+}
+
+function sumOptionalNumbers(left: number | undefined, right: number | undefined): number | undefined {
+  if (left === undefined) return right;
+  if (right === undefined) return left;
+  return left + right;
+}
+
+function collectSwarmLifetimeSourcesScanned(bundle: FrontierInspectBundle): FrontierInspectSwarmLifetimeSourcesScannedSummary {
+  const packages = new Set<string>();
+  const files = new Set<string>();
+  const resources = new Set<string>();
+  for (const entry of bundle.graph.entries) {
+    if (entry.package !== undefined) packages.add(entry.package);
+    for (const source of normalizeSourceFiles(entry)) files.add(source);
+    for (const touch of entry.touches ?? []) resources.add(touch);
+  }
+  for (const artifact of bundle.artifacts) {
+    if (artifact.sourcePackage !== undefined) packages.add(artifact.sourcePackage);
+    if (artifact.package !== undefined) packages.add(artifact.package);
+    for (const file of artifact.files) files.add(file);
+    for (const resource of artifact.resources) resources.add(resource);
+  }
+  for (const event of bundle.events) {
+    if (event.sourcePackage !== undefined) packages.add(event.sourcePackage);
+    if (event.package !== undefined) packages.add(event.package);
+    if (event.file !== undefined) files.add(event.file);
+    if (event.resource !== undefined) resources.add(event.resource);
+  }
+  return {
+    count: packages.size + files.size + resources.size,
+    packages: Array.from(packages).sort(),
+    files: Array.from(files).sort(),
+    resources: Array.from(resources).sort()
   };
 }
 
@@ -1672,6 +4400,12 @@ function cloneJsonObject(value: JsonObject): JsonObject {
   return cloneJsonValue(value);
 }
 
+function toJsonObject(value: unknown): JsonObject | undefined {
+  if (value === undefined) return undefined;
+  const converted = toJsonValue(value);
+  return isRecord(converted) && !Array.isArray(converted) ? converted as JsonObject : undefined;
+}
+
 function toJsonValue(value: unknown): JsonValue {
   const converted = sanitizeUnknownJson(value, 10, 500);
   return converted === undefined ? null : converted;
@@ -1745,10 +4479,65 @@ function normalizeTimestamp(value: FrontierInspectTimestamp | undefined): number
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function normalizeOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
 function normalizeNonEmpty(value: string, label: string): string {
   const normalized = String(value);
   if (normalized.length === 0) throw new TypeError(label + ' must be a non-empty string');
   return normalized;
+}
+
+function normalizeSourceLike(
+  source: FrontierInspectSourceLike | readonly FrontierInspectSourceLike[] | undefined
+): FrontierRegistryEntry['source'] | undefined {
+  if (source === undefined) return undefined;
+  const sources = Array.isArray(source) ? source : [source];
+  const normalized = sources
+    .filter((entry) => entry !== undefined && typeof entry.file === 'string' && entry.file.length !== 0)
+    .map((entry) => ({
+      file: entry.file,
+      line: entry.line,
+      column: entry.column,
+      symbol: entry.symbol,
+      exportName: entry.exportName,
+      package: entry.package
+    }));
+  if (normalized.length === 0) return undefined;
+  return Array.isArray(source) ? normalized : normalized[0];
+}
+
+function sourceLikeFiles(source: FrontierInspectSourceLike | readonly FrontierInspectSourceLike[] | undefined): string[] {
+  if (source === undefined) return [];
+  const sources = Array.isArray(source) ? source : [source];
+  return uniqueStrings(sources.map((entry) => entry.file).filter(isString));
+}
+
+function descriptorsToStrings(values: readonly (string | FrontierInspectDescriptorLike)[] | undefined): string[] | undefined {
+  if (values === undefined) return undefined;
+  return uniqueStrings(values.map((value) => typeof value === 'string' ? value : String(value.id ?? value.resource ?? value.kind ?? 'descriptor')));
+}
+
+function descriptorResource(value: string | FrontierInspectDescriptorLike): string | undefined {
+  return typeof value === 'string' ? value : value.resource ?? value.id;
+}
+
+function descriptorReads(value: string | FrontierInspectDescriptorLike): readonly FrontierRegistryPath[] {
+  return typeof value === 'string' ? [] : value.reads ?? [];
+}
+
+function singletonOrUndefined(values: readonly string[] | undefined): string | undefined {
+  return values !== undefined && values.length === 1 ? values[0] : undefined;
+}
+
+function mergeMetadata(left: JsonObject | undefined, right: unknown): JsonObject | undefined {
+  const converted = toJsonObject(right);
+  if (left === undefined) return converted;
+  if (converted === undefined) return left;
+  return { ...converted, ...left };
 }
 
 function uniqueStrings(values: readonly string[]): string[] {
@@ -1786,6 +4575,57 @@ function addMapSet(map: Map<string, Set<string>>, key: string, value: string): v
   const existing = map.get(key);
   if (existing === undefined) map.set(key, new Set([value]));
   else existing.add(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string' && value.length !== 0;
+}
+
+function firstString(...values: readonly unknown[]): string | undefined {
+  for (const value of values) if (isString(value)) return value;
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringField(
+  first: Record<string, unknown>,
+  second: Record<string, unknown>,
+  third: Record<string, unknown>,
+  keys: readonly string[]
+): string | undefined {
+  for (const key of keys) {
+    const value = fieldValue(first, key) ?? fieldValue(second, key) ?? fieldValue(third, key);
+    if (typeof value === 'string' && value.length !== 0) return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  }
+  return undefined;
+}
+
+function fieldValue(record: Record<string, unknown>, key: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(record, key)) return record[key];
+  const parts = key.split('.');
+  let current: unknown = record;
+  for (const part of parts) {
+    if (!isRecord(current)) return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+function stringArrayField(record: Record<string, unknown>, key: string): string[] {
+  const value = fieldValue(record, key);
+  if (!Array.isArray(value)) return [];
+  return value.map(String).filter(Boolean);
+}
+
+function logLevelToSeverity(level: string): FrontierInspectEventSeverity {
+  if (level === 'fatal' || level === 'error') return 'error';
+  if (level === 'warn') return 'warning';
+  if (level === 'trace' || level === 'debug') return 'debug';
+  return 'info';
 }
 
 function normalizeLimit(value: number | undefined): number {

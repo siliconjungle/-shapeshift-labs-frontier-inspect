@@ -78,6 +78,17 @@ for (let i = 0; i < cases; i++) {
   assert.ok(query.artifacts.every((artifact) => artifact.feature === feature));
   assert.ok(query.events.every((event) => event.feature === feature));
 
+  const sampledEvent = pick(events);
+  const byEventId = queryInspectBundle(bundle, { eventIds: [sampledEvent.id] });
+  assert.deepStrictEqual(byEventId.events.map((event) => event.id), [sampledEvent.id]);
+
+  const byResource = queryInspectBundle(bundle, { resources: [sampledEvent.resource] });
+  assert.ok(byResource.events.every((event) => event.resource === sampledEvent.resource));
+  assert.ok(byResource.artifacts.every((artifact) => artifact.resources.includes(sampledEvent.resource)));
+
+  const byStatus = queryInspectBundle(bundle, { statuses: [sampledEvent.status] });
+  assert.ok(byStatus.events.every((event) => event.status === sampledEvent.status));
+
   const path = 'state.' + feature + '.0';
   const impact = traceInspectImpact(bundle, { paths: [path] });
   assert.strictEqual(impact.kind, 'frontier.inspect.impact');
