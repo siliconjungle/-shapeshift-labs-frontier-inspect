@@ -211,6 +211,11 @@ import {
   createInspectArtifactFromRouteImpact,
   createInspectArtifactFromRouteManifest,
   createInspectArtifactFromSemanticMergeEvidence,
+  createInspectAppliedWorkSummary,
+  createInspectContinuousPoolHealthSummary,
+  createInspectCoordinatorQueueThroughputSummary,
+  createInspectMergeQueueHealthSummary,
+  createInspectDashboardSummary,
   createInspectReport,
   queryInspectBundle,
   traceInspectImpact
@@ -340,7 +345,63 @@ const report = createInspectReport(bundle, {
 });
 ```
 
-For dashboard-style swarm views, `createInspectAutonomousRunOutcomeSummary(bundle)` condenses mixed worker and decision evidence into a live/archived split instead of making raw lanes the primary human IA. The live section separates active agents, visible run outcomes (`completed`, `committed`/`applied`, `conflicts`, `reruns`), coordinator review debt, true human questions, explicit package-gate states, and stale audit/intermediate rows that were suppressed from the visible outcome summary. The summary also reports visible final outcome count, token/cost totals when the bundle carries them, the source packages/files/resources that were scanned, and the archived bundle evidence snapshot for drill-down. `createInspectSwarmLifetimeSummary(bundle)` remains available as a compatibility alias.
+For dashboard-style swarm views, `createInspectAutonomousMergeHealthSummary(bundle)` condenses normalized worker and decision evidence into active coordinators, open lanes, terminal decisions, coordinator-review debt, explicit human blockers, stale/rerun cleanup, and applied throughput. Latest terminal `applied`/`committed` decisions close older review debt on the same subject, so the summary distinguishes routine coordinator review from real human blockers instead of lumping them together. Review debt rows now carry the best available `reason`, `owner`, `ageMs`, and `terminalPath` fields so dashboards can render a compact unresolved-debt table instead of a bare count. `createInspectMergeQueueHealthSummary(bundle)` layers queue depth by meaning on top of the leaders, deferred work, promotions, and terminal decisions so a coordinator view can show queue pressure and merge outcomes in one compact contract. `createInspectAutonomousRunOutcomeSummary(bundle)` remains available as a compatibility alias, and `createInspectSwarmLifetimeSummary(bundle)` still exposes the older lifetime view.
+
+`createInspectContinuousPoolHealthSummary(bundle)` is the dashboard-friendly view for a continuous autonomous pool. It keeps active work, target concurrency, target gap, refill gap, below-target reasons, coordinator drain, conflict blocks, true human questions, done output, and stale/rerun noise in separate sections so compact logs can stay terse without losing the reason the pool is draining or blocked. `activeWork.targetGap` shows how far the pool is below the desired concurrency even when the queue is empty; `belowTargetReasons.reasons` surfaces the limiter names in priority order, including no backlog, review reserved, quota, CPU, dirty checkout, and lock contention.
+
+```ts
+const pool = createInspectContinuousPoolHealthSummary(bundle);
+
+const compact = [
+  `active ${pool.activeWork.activeAgents.count}/${pool.activeWork.targetConcurrency}`,
+  `target gap ${pool.activeWork.targetGap}`,
+  `refill gap ${pool.activeWork.refillGap}`,
+  `below target ${pool.belowTargetReasons.reasons.map((reason) => reason.label).join(', ') || 'none'}`,
+  `review drain ${pool.coordinatorDrain.reviewDrainPressure}`,
+  `applied ${pool.doneOutput.appliedCount}`,
+  `conflicts ${pool.trueBlockers.conflictBlocks.count}`,
+  `human questions ${pool.trueBlockers.trueHumanQuestions.count}`,
+  `stale/rerun ${pool.noise.staleRerunCount} (${Math.round(pool.noise.staleRerunRate * 100)}%)`
+].join(' | ');
+```
+
+`createInspectCoordinatorQueueThroughputSummary(bundle)` is the coordinator-facing queue report. It pairs active capacity and output counts with the remaining backlog, refill gap, coordinator drain, conflicts, human questions, package gates, and suppressed audit artifacts, then sorts the remaining bottlenecks so the highest-pressure lanes stay visible first.
+
+```ts
+const queue = createInspectCoordinatorQueueThroughputSummary(bundle);
+
+const compact = [
+  `active ${queue.throughput.activeAgents.count}/${queue.throughput.targetConcurrency}`,
+  `backlog ${queue.throughput.backlogCount}`,
+  `refill gap ${queue.throughput.refillGap}`,
+  `done ${queue.throughput.completedCount}`,
+  `drain ${queue.bottlenecks.reviewDrainPressure}`,
+  `top bottleneck ${queue.bottlenecks.primaryBottlenecks[0]?.name ?? 'none'}`
+].join(' | ');
+```
+
+`createInspectMergeQueueHealthSummary(bundle)` is the merge-queue projection for dashboards that want queue depth, leaders, deferred work, promotions, and terminal decisions in one object.
+
+```ts
+const mergeQueue = createInspectMergeQueueHealthSummary(bundle);
+
+const compact = [
+  `depth active ${mergeQueue.queueDepthByMeaning.activeWork}`,
+  `review ${mergeQueue.queueDepthByMeaning.coordinatorReview}`,
+  `leaders ${mergeQueue.leaders.count}`,
+  `deferred ${mergeQueue.deferredWork.count}`,
+  `promotions ${mergeQueue.promotions.appliedCount + mergeQueue.promotions.committedCount}`,
+  `terminal decisions ${mergeQueue.terminalDecisions.count}`
+].join(' | ');
+```
+
+`createInspectAppliedWorkSummary(bundle)` is the human-facing swarm run summary. It keeps active workers, applied work, committed work, evidence-only done work, coordinator review, true blockers, and stale/rerun in separate buckets so dashboards can surface successful outputs instead of only pre-merge review states. The summary also exposes `successfulOutputCount` for a top-line success total.
+
+`createInspectDashboardSummary(bundle)` pulls the feature map, applied work, open lanes, active agents, human questions, swarm history, performance, and drain-gate testing summaries into one dashboard-ready contract. Human-question buckets now surface only explicit `human-question:` contract lines, and each question record carries a copyable `code`, current `status`, parsed `question`, and `answerCode` so dashboards can show the exact decision prompt without inventing a new projection. It is a thin wrapper over the existing inspect summaries, so callers can render a compact operator view without stitching those sections together themselves.
+
+`createInspectBundleHealthSummary(bundle)` is the bundle-health dashboard helper. It groups complete bundles, generated patches, missing patch, missing bundle, no-change done, evidence-only done, failed gate, and true human blockers into stable card records with human-readable detail and action text. Use it when a UI needs one compact summary that keeps healthy terminal states separate from real blockers.
+
+`createInspectDefaultDrainGateHealthSummary(bundle)` is the auto-drain gate-health dashboard helper. It separates candidates with gates, candidates missing gates, failed gates, applied after gates, skipped required gates, and true human blockers so gate configuration problems stay distinct from explicit human questions.
 
 The lifetime summary now also includes `modelPerformance`, which groups samples by `model -> computeTier -> taskKind` and rolls up cost, success/useful-output rates, reruns, stale/reject rates, runtime, cheap-vs-expensive success, escalation benefit, and missing-pricing counts. Empty bundles still produce a defined summary object with zero counts and empty groups, and mixed-model bundles keep each model isolated while still aggregating the overall cost view.
 

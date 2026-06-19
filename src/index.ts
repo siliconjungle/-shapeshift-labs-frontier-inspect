@@ -43,6 +43,24 @@ export const FRONTIER_INSPECT_JSONL_KIND = 'frontier.inspect.jsonl';
 export const FRONTIER_INSPECT_JSONL_VERSION = 1;
 export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_KIND = 'frontier.inspect.semantic-merge-evidence';
 export const FRONTIER_INSPECT_SEMANTIC_MERGE_EVIDENCE_VERSION = 1;
+export const FRONTIER_INSPECT_BUNDLE_HEALTH_SUMMARY_KIND = 'frontier.inspect.bundle-health-summary';
+export const FRONTIER_INSPECT_BUNDLE_HEALTH_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_DEFAULT_DRAIN_GATE_HEALTH_SUMMARY_KIND = 'frontier.inspect.default-drain-gate-health-summary';
+export const FRONTIER_INSPECT_DEFAULT_DRAIN_GATE_HEALTH_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_AUTONOMOUS_MERGE_HEALTH_SUMMARY_KIND = 'frontier.inspect.autonomous-merge-health-summary';
+export const FRONTIER_INSPECT_AUTONOMOUS_MERGE_HEALTH_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_MERGE_QUEUE_HEALTH_SUMMARY_KIND = 'frontier.inspect.merge-queue-health-summary';
+export const FRONTIER_INSPECT_MERGE_QUEUE_HEALTH_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_CONTINUOUS_POOL_HEALTH_SUMMARY_KIND = 'frontier.inspect.continuous-pool-health-summary';
+export const FRONTIER_INSPECT_CONTINUOUS_POOL_HEALTH_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_COORDINATOR_QUEUE_THROUGHPUT_SUMMARY_KIND = 'frontier.inspect.coordinator-queue-throughput-summary';
+export const FRONTIER_INSPECT_COORDINATOR_QUEUE_THROUGHPUT_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_APPLIED_WORK_SUMMARY_KIND = 'frontier.inspect.applied-work-summary';
+export const FRONTIER_INSPECT_APPLIED_WORK_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_DASHBOARD_SUMMARY_KIND = 'frontier.inspect.dashboard-summary';
+export const FRONTIER_INSPECT_DASHBOARD_SUMMARY_VERSION = 1;
+export const FRONTIER_INSPECT_OPERATOR_DASHBOARD_SUMMARY_KIND = FRONTIER_INSPECT_DASHBOARD_SUMMARY_KIND;
+export const FRONTIER_INSPECT_OPERATOR_DASHBOARD_SUMMARY_VERSION = FRONTIER_INSPECT_DASHBOARD_SUMMARY_VERSION;
 export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND = 'frontier.inspect.swarm-lifetime-summary';
 export const FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_VERSION = 1;
 export const FRONTIER_INSPECT_AUTONOMOUS_RUN_OUTCOME_SUMMARY_KIND = FRONTIER_INSPECT_SWARM_LIFETIME_SUMMARY_KIND;
@@ -204,6 +222,290 @@ export interface FrontierInspectSummary {
   fileCount: number;
   resourceCount: number;
   errorCount: number;
+}
+
+export interface FrontierInspectAutonomousMergeHealthSummary {
+  kind: typeof FRONTIER_INSPECT_AUTONOMOUS_MERGE_HEALTH_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_AUTONOMOUS_MERGE_HEALTH_SUMMARY_VERSION;
+  generatedAt: number;
+  activeCoordinators: FrontierInspectAutonomousMergeHealthBucketSummary;
+  openLanes: FrontierInspectAutonomousMergeHealthBucketSummary;
+  terminalDecisions: FrontierInspectAutonomousMergeHealthTerminalDecisionSummary;
+  reviewDebt: FrontierInspectAutonomousMergeHealthReviewDebtSummary;
+  realHumanBlockers: FrontierInspectAutonomousMergeHealthHumanQuestionSummary;
+  staleRerunCleanup: FrontierInspectAutonomousMergeHealthCleanupSummary;
+  appliedThroughput: FrontierInspectAutonomousMergeHealthAppliedThroughputSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectMergeQueueHealthSummary {
+  kind: typeof FRONTIER_INSPECT_MERGE_QUEUE_HEALTH_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_MERGE_QUEUE_HEALTH_SUMMARY_VERSION;
+  generatedAt: number;
+  queueDepthByMeaning: FrontierInspectSwarmLifetimeQueueDepthSummary;
+  leaders: FrontierInspectAutonomousMergeHealthBucketSummary;
+  deferredWork: FrontierInspectAutonomousMergeHealthReviewDebtSummary;
+  promotions: FrontierInspectAutonomousMergeHealthAppliedThroughputSummary;
+  terminalDecisions: FrontierInspectAutonomousMergeHealthTerminalDecisionSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectContinuousPoolHealthSummary {
+  kind: typeof FRONTIER_INSPECT_CONTINUOUS_POOL_HEALTH_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_CONTINUOUS_POOL_HEALTH_SUMMARY_VERSION;
+  generatedAt: number;
+  activeWork: FrontierInspectContinuousPoolHealthActiveWorkSummary;
+  coordinatorDrain: FrontierInspectContinuousPoolHealthCoordinatorDrainSummary;
+  trueBlockers: FrontierInspectContinuousPoolHealthTrueBlockerSummary;
+  belowTargetReasons: FrontierInspectContinuousPoolHealthBelowTargetSummary;
+  doneOutput: FrontierInspectContinuousPoolHealthDoneOutputSummary;
+  noise: FrontierInspectContinuousPoolHealthNoiseSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectCoordinatorQueueThroughputSummary {
+  kind: typeof FRONTIER_INSPECT_COORDINATOR_QUEUE_THROUGHPUT_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_COORDINATOR_QUEUE_THROUGHPUT_SUMMARY_VERSION;
+  generatedAt: number;
+  throughput: FrontierInspectCoordinatorQueueThroughputThroughputSummary;
+  bottlenecks: FrontierInspectCoordinatorQueueThroughputBottleneckSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectCoordinatorQueueThroughputThroughputSummary {
+  activeAgents: FrontierInspectAutonomousMergeHealthBucketSummary;
+  targetConcurrency: number;
+  backlogCount: number;
+  refillGap: number;
+  appliedCount: number;
+  committedCount: number;
+  completedCount: number;
+  usefulOutputCount: number;
+}
+
+export interface FrontierInspectCoordinatorQueueThroughputBottleneck {
+  name: string;
+  count: number;
+}
+
+export interface FrontierInspectCoordinatorQueueThroughputBottleneckSummary {
+  reviewDrainPressure: number;
+  reviewCount: number;
+  rerunCount: number;
+  conflictCount: number;
+  humanQuestionCount: number;
+  realBlockerCount: number;
+  packageGateCount: number;
+  suppressedAuditArtifactCount: number;
+  primaryBottlenecks: FrontierInspectCoordinatorQueueThroughputBottleneck[];
+}
+
+export interface FrontierInspectAppliedWorkSummary {
+  kind: typeof FRONTIER_INSPECT_APPLIED_WORK_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_APPLIED_WORK_SUMMARY_VERSION;
+  generatedAt: number;
+  activeWorkers: FrontierInspectAutonomousMergeHealthBucketSummary;
+  appliedWork: FrontierInspectAppliedWorkOutcomeSummary;
+  committedWork: FrontierInspectAppliedWorkOutcomeSummary;
+  evidenceOnlyDoneWork: FrontierInspectAppliedWorkOutcomeSummary;
+  coordinatorReview: FrontierInspectAutonomousMergeHealthReviewDebtSummary;
+  trueBlockers: FrontierInspectAppliedWorkTrueBlockerSummary;
+  staleRerun: FrontierInspectAppliedWorkStaleRerunSummary;
+  successfulOutputCount: number;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectDashboardSummary {
+  kind: typeof FRONTIER_INSPECT_DASHBOARD_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_DASHBOARD_SUMMARY_VERSION;
+  generatedAt: number;
+  epics: FrontierInspectFeatureMap;
+  tasks: FrontierInspectAppliedWorkSummary;
+  lanes: FrontierInspectAutonomousMergeHealthBucketSummary;
+  activeAgents: FrontierInspectAutonomousMergeHealthBucketSummary;
+  questions: FrontierInspectAutonomousMergeHealthHumanQuestionSummary;
+  history: FrontierInspectSwarmLifetimeSummary;
+  performance: FrontierInspectSwarmLifetimeModelPerformanceSummary;
+  testing: FrontierInspectDefaultDrainGateHealthSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectBundleHealthCard {
+  id: string;
+  label: string;
+  value: number;
+  detail: string;
+  status: 'ok' | 'info' | 'warning' | 'blocked' | 'unavailable';
+  action: string;
+  sourceFields: string[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthBucketSummary {
+  count: number;
+  ids: string[];
+  sources: string[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthTerminalDecisionSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  statuses: string[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthReviewDebtSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  coordinatorReviewCount: number;
+  items: FrontierInspectAutonomousMergeHealthReviewDebtItem[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthReviewDebtItem {
+  id: string;
+  reason?: string;
+  owner?: string;
+  ageMs?: number;
+  terminalPath?: string;
+  sources: string[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthHumanQuestion {
+  id: string;
+  code: string;
+  status?: string;
+  owner?: string;
+  surface?: string;
+  missingAuthority?: string;
+  question?: string;
+  answerCode?: string;
+  reason: string;
+  sources: string[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthHumanQuestionSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  reasons: string[];
+  questions: FrontierInspectAutonomousMergeHealthHumanQuestion[];
+}
+
+export interface FrontierInspectAutonomousMergeHealthCleanupSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  staleCount: number;
+  rerunCount: number;
+}
+
+export interface FrontierInspectAutonomousMergeHealthAppliedThroughputSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  appliedCount: number;
+  committedCount: number;
+}
+
+export interface FrontierInspectBundleHealthBucketSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {}
+
+export interface FrontierInspectBundleHealthHumanBlockerSummary extends FrontierInspectBundleHealthBucketSummary {
+  reasons: string[];
+}
+
+export interface FrontierInspectBundleHealthSummary {
+  kind: typeof FRONTIER_INSPECT_BUNDLE_HEALTH_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_BUNDLE_HEALTH_SUMMARY_VERSION;
+  generatedAt: number;
+  status: 'ok' | 'info' | 'warning' | 'blocked' | 'unavailable';
+  headline: string;
+  cards: FrontierInspectBundleHealthCard[];
+  completeBundles: FrontierInspectBundleHealthBucketSummary;
+  generatedPatches: FrontierInspectBundleHealthBucketSummary;
+  missingPatch: FrontierInspectBundleHealthBucketSummary;
+  missingBundle: FrontierInspectBundleHealthBucketSummary;
+  noChangeDone: FrontierInspectBundleHealthBucketSummary;
+  evidenceOnlyDone: FrontierInspectBundleHealthBucketSummary;
+  failedGate: FrontierInspectBundleHealthBucketSummary;
+  trueHumanBlockers: FrontierInspectBundleHealthHumanBlockerSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectDefaultDrainGateHealthCard extends FrontierInspectBundleHealthCard {}
+
+export interface FrontierInspectDefaultDrainGateHealthBucketSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {}
+
+export interface FrontierInspectDefaultDrainGateHealthHumanBlockerSummary extends FrontierInspectDefaultDrainGateHealthBucketSummary {
+  reasons: string[];
+}
+
+export interface FrontierInspectDefaultDrainGateHealthGateSummary extends FrontierInspectDefaultDrainGateHealthBucketSummary {
+  requiredCount: number;
+  passedCount: number;
+  failedCount: number;
+  skippedCount: number;
+}
+
+export interface FrontierInspectDefaultDrainGateHealthSummary {
+  kind: typeof FRONTIER_INSPECT_DEFAULT_DRAIN_GATE_HEALTH_SUMMARY_KIND;
+  version: typeof FRONTIER_INSPECT_DEFAULT_DRAIN_GATE_HEALTH_SUMMARY_VERSION;
+  generatedAt: number;
+  status: 'ok' | 'info' | 'warning' | 'blocked' | 'unavailable';
+  headline: string;
+  cards: FrontierInspectDefaultDrainGateHealthCard[];
+  candidatesWithGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  candidatesMissingGates: FrontierInspectDefaultDrainGateHealthBucketSummary;
+  appliedAfterGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  failedGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  skippedRequiredGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  trueHumanBlockers: FrontierInspectDefaultDrainGateHealthHumanBlockerSummary;
+  archivedEvidence: FrontierInspectSummary;
+}
+
+export interface FrontierInspectContinuousPoolHealthActiveWorkSummary {
+  activeAgents: FrontierInspectAutonomousMergeHealthBucketSummary;
+  targetConcurrency: number;
+  targetGap: number;
+  backlogCount: number;
+  refillGap: number;
+}
+
+export interface FrontierInspectContinuousPoolHealthCoordinatorDrainSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  reviewDrainPressure: number;
+  reviewCount: number;
+  rerunCount: number;
+}
+
+export interface FrontierInspectContinuousPoolHealthTrueBlockerSummary {
+  conflictBlocks: FrontierInspectAutonomousMergeHealthBucketSummary;
+  trueHumanQuestions: FrontierInspectAutonomousMergeHealthHumanQuestionSummary;
+}
+
+export interface FrontierInspectContinuousPoolHealthBelowTargetReasonSummary {
+  id: string;
+  label: string;
+  count: number;
+  ids: string[];
+  sources: string[];
+}
+
+export interface FrontierInspectContinuousPoolHealthBelowTargetSummary {
+  gap: number;
+  reasons: FrontierInspectContinuousPoolHealthBelowTargetReasonSummary[];
+  sources: string[];
+}
+
+export interface FrontierInspectContinuousPoolHealthDoneOutputSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  appliedCount: number;
+  committedCount: number;
+  completedCount: number;
+}
+
+export interface FrontierInspectContinuousPoolHealthNoiseSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  staleCount: number;
+  rerunCount: number;
+  staleRerunCount: number;
+  staleRerunRate: number;
+}
+
+export interface FrontierInspectAppliedWorkOutcomeSummary extends FrontierInspectAutonomousMergeHealthBucketSummary {
+  appliedCount?: number;
+  committedCount?: number;
+  evidenceOnlyCount?: number;
+}
+
+export interface FrontierInspectAppliedWorkTrueBlockerSummary {
+  conflictBlocks: FrontierInspectAutonomousMergeHealthBucketSummary;
+  trueHumanQuestions: FrontierInspectAutonomousMergeHealthHumanQuestionSummary;
+}
+
+export interface FrontierInspectAppliedWorkStaleRerunSummary extends FrontierInspectAutonomousMergeHealthCleanupSummary {
+  staleRerunCount: number;
 }
 
 export interface FrontierInspectSwarmLifetimeSummary {
@@ -1555,6 +1857,1389 @@ export function createInspectAutonomousRunOutcomeSummary(bundle: FrontierInspect
   return createInspectSwarmLifetimeSummary(bundle);
 }
 
+export function createInspectAutonomousMergeHealthSummary(bundle: FrontierInspectBundle): FrontierInspectAutonomousMergeHealthSummary {
+  const observations = collectAutonomousMergeHealthObservations(bundle);
+  const components = collapseAutonomousMergeHealthObservations(observations);
+  const latestObservations = components.map((component) => component.latest);
+
+  const activeCoordinators = collectAutonomousMergeHealthBucket(
+    latestObservations.filter((observation) => looksLikeAutonomousMergeHealthActiveCoordinator(observation)),
+    {
+      id: (observation) => observation.coordinatorId ?? observation.id
+    }
+  );
+
+  const openLaneObservations = latestObservations.filter((observation) => {
+    const lane = extractAutonomousMergeHealthLane(observation);
+    return lane !== undefined && !looksLikeAutonomousMergeHealthTerminalDecision(observation);
+  });
+
+  const terminalDecisions = collectAutonomousMergeHealthTerminalDecisions(
+    latestObservations.filter((observation) => looksLikeAutonomousMergeHealthTerminalDecision(observation))
+  );
+  const reviewDebt = collectAutonomousMergeHealthReviewDebt(
+    latestObservations.filter((observation) => looksLikeAutonomousMergeHealthCoordinatorReview(observation)),
+    bundle.generatedAt
+  );
+  const realHumanBlockers = collectAutonomousMergeHealthHumanQuestions(
+    latestObservations.filter((observation) => looksLikeAutonomousMergeHealthHumanQuestion(observation))
+  );
+  const staleRerunCleanup = collectAutonomousMergeHealthCleanup(
+    latestObservations.filter((observation) => looksLikeAutonomousMergeHealthCleanup(observation))
+  );
+  const appliedThroughput = collectAutonomousMergeHealthAppliedThroughput(
+    latestObservations.filter((observation) => looksLikeAutonomousMergeHealthApplied(observation))
+  );
+
+  return {
+    kind: FRONTIER_INSPECT_AUTONOMOUS_MERGE_HEALTH_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_AUTONOMOUS_MERGE_HEALTH_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    activeCoordinators,
+    openLanes: collectAutonomousMergeHealthBucket(openLaneObservations, {
+      id: (observation) => extractAutonomousMergeHealthLane(observation) ?? observation.id
+    }),
+    terminalDecisions,
+    reviewDebt,
+    realHumanBlockers,
+    staleRerunCleanup,
+    appliedThroughput,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+export function createInspectMergeQueueHealthSummary(bundle: FrontierInspectBundle): FrontierInspectMergeQueueHealthSummary {
+  const autonomousMergeHealth = createInspectAutonomousMergeHealthSummary(bundle);
+  const swarmLifetime = createInspectSwarmLifetimeSummary(bundle);
+
+  return {
+    kind: FRONTIER_INSPECT_MERGE_QUEUE_HEALTH_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_MERGE_QUEUE_HEALTH_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    queueDepthByMeaning: swarmLifetime.live.queueDepthByMeaning,
+    leaders: autonomousMergeHealth.activeCoordinators,
+    deferredWork: autonomousMergeHealth.reviewDebt,
+    promotions: autonomousMergeHealth.appliedThroughput,
+    terminalDecisions: autonomousMergeHealth.terminalDecisions,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+export function createInspectContinuousPoolHealthSummary(bundle: FrontierInspectBundle): FrontierInspectContinuousPoolHealthSummary {
+  const latestObservations = collapseAutonomousMergeHealthObservations(collectAutonomousMergeHealthObservations(bundle)).map((component) => component.latest);
+  const activeObservations = latestObservations.filter((observation) => looksLikeContinuousPoolActiveWork(observation));
+  const backlogObservations = latestObservations.filter((observation) => looksLikeContinuousPoolBacklog(observation));
+  const reviewObservations = latestObservations.filter((observation) => looksLikeAutonomousMergeHealthCoordinatorReview(observation));
+  const rerunObservations = latestObservations.filter((observation) => looksLikeContinuousPoolRerun(observation));
+  const conflictObservations = latestObservations.filter((observation) => looksLikeContinuousPoolConflictBlock(observation));
+  const humanQuestionObservations = latestObservations.filter((observation) => looksLikeAutonomousMergeHealthHumanQuestion(observation));
+  const appliedObservations = latestObservations.filter((observation) => looksLikeContinuousPoolApplied(observation));
+  const noiseObservations = latestObservations.filter((observation) => looksLikeAutonomousMergeHealthStale(observation) || looksLikeContinuousPoolRerun(observation));
+  const targetConcurrency = extractContinuousPoolTargetConcurrency(latestObservations);
+  const activeAgents = collectAutonomousMergeHealthBucket(activeObservations, {
+    id: (observation) => extractContinuousPoolAgentId(observation) ?? observation.id
+  });
+  const targetGap = Math.max(0, targetConcurrency - activeAgents.count);
+  const backlogCount = collectAutonomousMergeHealthBucket(backlogObservations).count;
+  const refillGap = backlogCount > 0 ? Math.max(0, targetConcurrency - activeAgents.count) : 0;
+  const reviewCount = reviewObservations.length;
+  const rerunCount = rerunObservations.length;
+  const staleCount = noiseObservations.filter((observation) => looksLikeAutonomousMergeHealthStale(observation)).length;
+  const conflictBlocks = collectAutonomousMergeHealthBucket(conflictObservations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  const trueHumanQuestions = collectAutonomousMergeHealthHumanQuestions(humanQuestionObservations);
+  const appliedCount = appliedObservations.filter((observation) => observation.status !== undefined && /^applied$/i.test(observation.status)).length;
+  const committedCount = appliedObservations.filter((observation) => observation.status !== undefined && /^committed$/i.test(observation.status)).length;
+  const noiseBucket = collectAutonomousMergeHealthBucket(noiseObservations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  const noiseObservationCount = latestObservations.length;
+  const belowTargetReasons = collectContinuousPoolBelowTargetReasons(latestObservations, reviewObservations, targetGap, backlogCount);
+
+  return {
+    kind: FRONTIER_INSPECT_CONTINUOUS_POOL_HEALTH_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_CONTINUOUS_POOL_HEALTH_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    activeWork: {
+      activeAgents,
+      targetConcurrency,
+      targetGap,
+      backlogCount,
+      refillGap
+    },
+    coordinatorDrain: {
+      ...collectAutonomousMergeHealthBucket(reviewObservations, {
+        id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+      }),
+      reviewDrainPressure: reviewCount + rerunCount,
+      reviewCount,
+      rerunCount
+    },
+    trueBlockers: {
+      conflictBlocks,
+      trueHumanQuestions
+    },
+    belowTargetReasons,
+    doneOutput: {
+      ...collectAutonomousMergeHealthBucket(appliedObservations, {
+        id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+      }),
+      appliedCount,
+      committedCount,
+      completedCount: appliedCount + committedCount
+    },
+    noise: {
+      ...noiseBucket,
+      staleCount,
+      rerunCount,
+      staleRerunCount: staleCount + rerunCount,
+      staleRerunRate: rateForCount(staleCount + rerunCount, noiseObservationCount)
+    },
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+function collectContinuousPoolBelowTargetReasons(
+  observations: readonly AutonomousMergeHealthObservation[],
+  reviewObservations: readonly AutonomousMergeHealthObservation[],
+  targetGap: number,
+  backlogCount: number
+): FrontierInspectContinuousPoolHealthBelowTargetSummary {
+  if (targetGap <= 0) {
+    return {
+      gap: 0,
+      reasons: [],
+      sources: []
+    };
+  }
+
+  const reasons: FrontierInspectContinuousPoolHealthBelowTargetReasonSummary[] = [];
+  const addReason = (reason: FrontierInspectContinuousPoolHealthBelowTargetReasonSummary): void => {
+    if (reason.count <= 0) return;
+    reasons[reasons.length] = reason;
+  };
+
+  if (backlogCount === 0) {
+    addReason({
+      id: 'no-backlog',
+      label: 'No backlog',
+      count: 1,
+      ids: ['no-backlog'],
+      sources: ['activeWork.backlogCount', 'activeWork.targetGap']
+    });
+  }
+
+  const reviewBucket = collectAutonomousMergeHealthBucket(reviewObservations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  addReason({
+    id: 'review-reserved',
+    label: 'Review reserved',
+    count: reviewBucket.count,
+    ids: reviewBucket.ids,
+    sources: reviewBucket.sources
+  });
+
+  addReason(createContinuousPoolBelowTargetReasonBucket(
+    'quota',
+    'Quota',
+    observations.filter((observation) => looksLikeContinuousPoolQuotaPressure(observation))
+  ));
+  addReason(createContinuousPoolBelowTargetReasonBucket(
+    'cpu',
+    'CPU',
+    observations.filter((observation) => looksLikeContinuousPoolCpuPressure(observation))
+  ));
+  addReason(createContinuousPoolBelowTargetReasonBucket(
+    'dirty-checkout',
+    'Dirty checkout',
+    observations.filter((observation) => looksLikeContinuousPoolDirtyCheckout(observation))
+  ));
+  addReason(createContinuousPoolBelowTargetReasonBucket(
+    'lock-contention',
+    'Lock contention',
+    observations.filter((observation) => looksLikeContinuousPoolLockContention(observation))
+  ));
+
+  return {
+    gap: targetGap,
+    reasons,
+    sources: uniqueStrings(reasons.flatMap((reason) => reason.sources))
+  };
+}
+
+function createContinuousPoolBelowTargetReasonBucket(
+  id: string,
+  label: string,
+  observations: readonly AutonomousMergeHealthObservation[]
+): FrontierInspectContinuousPoolHealthBelowTargetReasonSummary {
+  const bucket = collectAutonomousMergeHealthBucket(observations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  return {
+    id,
+    label,
+    count: bucket.count,
+    ids: bucket.ids,
+    sources: bucket.sources
+  };
+}
+
+export function createInspectCoordinatorQueueThroughputSummary(bundle: FrontierInspectBundle): FrontierInspectCoordinatorQueueThroughputSummary {
+  const continuousPoolHealth = createInspectContinuousPoolHealthSummary(bundle);
+  const swarmLifetime = createInspectSwarmLifetimeSummary(bundle);
+  const bottlenecks = collectCoordinatorQueueThroughputBottlenecks(continuousPoolHealth, swarmLifetime);
+
+  return {
+    kind: FRONTIER_INSPECT_COORDINATOR_QUEUE_THROUGHPUT_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_COORDINATOR_QUEUE_THROUGHPUT_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    throughput: {
+      activeAgents: continuousPoolHealth.activeWork.activeAgents,
+      targetConcurrency: continuousPoolHealth.activeWork.targetConcurrency,
+      backlogCount: continuousPoolHealth.activeWork.backlogCount,
+      refillGap: continuousPoolHealth.activeWork.refillGap,
+      appliedCount: continuousPoolHealth.doneOutput.appliedCount,
+      committedCount: continuousPoolHealth.doneOutput.committedCount,
+      completedCount: continuousPoolHealth.doneOutput.completedCount,
+      usefulOutputCount: swarmLifetime.usefulOutputCount
+    },
+    bottlenecks,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+function collectCoordinatorQueueThroughputBottlenecks(
+  continuousPoolHealth: FrontierInspectContinuousPoolHealthSummary,
+  swarmLifetime: FrontierInspectSwarmLifetimeSummary
+): FrontierInspectCoordinatorQueueThroughputBottleneckSummary {
+  return {
+    reviewDrainPressure: continuousPoolHealth.coordinatorDrain.reviewDrainPressure,
+    reviewCount: continuousPoolHealth.coordinatorDrain.reviewCount,
+    rerunCount: continuousPoolHealth.coordinatorDrain.rerunCount,
+    conflictCount: continuousPoolHealth.trueBlockers.conflictBlocks.count,
+    humanQuestionCount: continuousPoolHealth.trueBlockers.trueHumanQuestions.count,
+    realBlockerCount: swarmLifetime.live.queueDepthByMeaning.realBlockers,
+    packageGateCount: swarmLifetime.live.queueDepthByMeaning.packageGates,
+    suppressedAuditArtifactCount: swarmLifetime.live.queueDepthByMeaning.suppressedAuditArtifacts,
+    primaryBottlenecks: rankCoordinatorQueueThroughputBottlenecks([
+      { name: 'backlog', count: continuousPoolHealth.activeWork.backlogCount },
+      { name: 'coordinator-drain', count: continuousPoolHealth.coordinatorDrain.reviewDrainPressure },
+      { name: 'conflicts', count: continuousPoolHealth.trueBlockers.conflictBlocks.count },
+      { name: 'human-questions', count: continuousPoolHealth.trueBlockers.trueHumanQuestions.count },
+      { name: 'real-blockers', count: swarmLifetime.live.queueDepthByMeaning.realBlockers },
+      { name: 'package-gates', count: swarmLifetime.live.queueDepthByMeaning.packageGates },
+      { name: 'suppressed-audit-artifacts', count: swarmLifetime.live.queueDepthByMeaning.suppressedAuditArtifacts }
+    ])
+  };
+}
+
+function rankCoordinatorQueueThroughputBottlenecks(
+  bottlenecks: readonly FrontierInspectCoordinatorQueueThroughputBottleneck[]
+): FrontierInspectCoordinatorQueueThroughputBottleneck[] {
+  return bottlenecks
+    .filter((bottleneck) => bottleneck.count > 0)
+    .slice()
+    .sort((left, right) => {
+      if (right.count !== left.count) return right.count - left.count;
+      return left.name.localeCompare(right.name);
+    });
+}
+
+export function createInspectAppliedWorkSummary(bundle: FrontierInspectBundle): FrontierInspectAppliedWorkSummary {
+  const latestObservations = collapseAutonomousMergeHealthObservations(collectAutonomousMergeHealthObservations(bundle)).map((component) => component.latest);
+  const activeObservations = latestObservations.filter((observation) => looksLikeContinuousPoolActiveWork(observation));
+  const appliedObservations = latestObservations.filter((observation) => looksLikeAppliedWorkApplied(observation));
+  const committedObservations = latestObservations.filter((observation) => looksLikeAppliedWorkCommitted(observation));
+  const evidenceOnlyObservations = latestObservations.filter((observation) => looksLikeAppliedWorkEvidenceOnly(observation));
+  const reviewObservations = latestObservations.filter((observation) => looksLikeAutonomousMergeHealthCoordinatorReview(observation));
+  const conflictObservations = latestObservations.filter((observation) => looksLikeContinuousPoolConflictBlock(observation));
+  const humanQuestionObservations = latestObservations.filter((observation) => looksLikeAutonomousMergeHealthHumanQuestion(observation));
+  const staleObservations = latestObservations.filter((observation) => looksLikeAutonomousMergeHealthStale(observation));
+  const rerunObservations = latestObservations.filter((observation) => looksLikeContinuousPoolRerun(observation));
+  const staleRerunObservations = staleObservations.concat(rerunObservations);
+  const activeWorkers = collectAutonomousMergeHealthBucket(activeObservations, {
+    id: (observation) => extractContinuousPoolAgentId(observation) ?? observation.id
+  });
+  const appliedWork = {
+    ...collectAutonomousMergeHealthBucket(appliedObservations, {
+      id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+    }),
+    appliedCount: appliedObservations.length
+  };
+  const committedWork = {
+    ...collectAutonomousMergeHealthBucket(committedObservations, {
+      id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+    }),
+    committedCount: committedObservations.length
+  };
+  const evidenceOnlyDoneWork = {
+    ...collectAutonomousMergeHealthBucket(evidenceOnlyObservations, {
+      id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+    }),
+    evidenceOnlyCount: evidenceOnlyObservations.length
+  };
+  const coordinatorReview = collectAutonomousMergeHealthReviewDebt(reviewObservations, bundle.generatedAt);
+  const staleRerun = {
+    ...collectAutonomousMergeHealthBucket(staleRerunObservations, {
+      id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+    }),
+    staleCount: staleObservations.length,
+    rerunCount: rerunObservations.length,
+    staleRerunCount: staleRerunObservations.length
+  };
+  const conflictBlocks = collectAutonomousMergeHealthBucket(conflictObservations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  const trueHumanQuestions = collectAutonomousMergeHealthHumanQuestions(humanQuestionObservations);
+  const successfulOutputCount = appliedWork.appliedCount + committedWork.committedCount + evidenceOnlyDoneWork.evidenceOnlyCount;
+  return {
+    kind: FRONTIER_INSPECT_APPLIED_WORK_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_APPLIED_WORK_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    activeWorkers,
+    appliedWork,
+    committedWork,
+    evidenceOnlyDoneWork,
+    coordinatorReview,
+    trueBlockers: {
+      conflictBlocks,
+      trueHumanQuestions
+    },
+    staleRerun,
+    successfulOutputCount,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+export function createInspectDashboardSummary(bundle: FrontierInspectBundle): FrontierInspectDashboardSummary {
+  const featureMap = createInspectFeatureMap(bundle);
+  const appliedWork = createInspectAppliedWorkSummary(bundle);
+  const autonomousMergeHealth = createInspectAutonomousMergeHealthSummary(bundle);
+  const continuousPoolHealth = createInspectContinuousPoolHealthSummary(bundle);
+  const swarmLifetime = createInspectSwarmLifetimeSummary(bundle);
+  const testing = createInspectDefaultDrainGateHealthSummary(bundle);
+
+  return {
+    kind: FRONTIER_INSPECT_DASHBOARD_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_DASHBOARD_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    epics: featureMap,
+    tasks: appliedWork,
+    lanes: autonomousMergeHealth.openLanes,
+    activeAgents: continuousPoolHealth.activeWork.activeAgents,
+    questions: continuousPoolHealth.trueBlockers.trueHumanQuestions,
+    history: swarmLifetime,
+    performance: swarmLifetime.modelPerformance,
+    testing,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+export const createInspectOperatorDashboardSummary = createInspectDashboardSummary;
+
+export function createInspectBundleHealthSummary(bundle: FrontierInspectBundle): FrontierInspectBundleHealthSummary {
+  const observations = collapseBundleHealthObservations(collectBundleHealthObservations(bundle)).map((component) => component.latest);
+  const classifiedObservations = observations.map((observation) => ({
+    observation,
+    meaning: classifyBundleHealthMeaning(observation)
+  }));
+  const completeBundles = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'complete-bundle').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const generatedPatches = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'generated-patch').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const missingPatch = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'missing-patch').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const missingBundle = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'missing-bundle').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const noChangeDone = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'no-change-done').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const evidenceOnlyDone = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'evidence-only-done').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const failedGate = collectBundleHealthBucket(classifiedObservations.filter((entry) => entry.meaning === 'failed-gate').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const trueHumanBlockers = collectBundleHealthHumanBlockers(classifiedObservations.filter((entry) => entry.meaning === 'true-human-blocker').map((entry) => entry.observation), {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const healthyCount = completeBundles.count + generatedPatches.count + noChangeDone.count + evidenceOnlyDone.count;
+  const warningCount = missingPatch.count + missingBundle.count + failedGate.count;
+  const status: FrontierInspectBundleHealthSummary['status'] = trueHumanBlockers.count > 0
+    ? 'blocked'
+    : warningCount > 0
+      ? 'warning'
+      : healthyCount > 0
+        ? generatedPatches.count > 0 || evidenceOnlyDone.count > 0
+          ? 'info'
+          : 'ok'
+        : 'ok';
+
+  return {
+    kind: FRONTIER_INSPECT_BUNDLE_HEALTH_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_BUNDLE_HEALTH_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    status,
+    headline: createBundleHealthHeadline({
+      status,
+      completeBundles,
+      generatedPatches,
+      missingPatch,
+      missingBundle,
+      noChangeDone,
+      evidenceOnlyDone,
+      failedGate,
+      trueHumanBlockers
+    }),
+    cards: createInspectBundleHealthCards({
+      completeBundles,
+      generatedPatches,
+      missingPatch,
+      missingBundle,
+      noChangeDone,
+      evidenceOnlyDone,
+      failedGate,
+      trueHumanBlockers
+    }),
+    completeBundles,
+    generatedPatches,
+    missingPatch,
+    missingBundle,
+    noChangeDone,
+    evidenceOnlyDone,
+    failedGate,
+    trueHumanBlockers,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+export function createInspectDefaultDrainGateHealthSummary(bundle: FrontierInspectBundle): FrontierInspectDefaultDrainGateHealthSummary {
+  const observations = collapseBundleHealthObservations(collectBundleHealthObservations(bundle)).map((component) => component.latest);
+  const trueHumanBlockerObservations = observations.filter((observation) => looksLikeBundleHealthHumanBlocker(observation));
+  const failedGateObservations = observations.filter((observation) => looksLikeDefaultDrainGateFailedGate(observation));
+  const skippedRequiredGateObservations = observations.filter((observation) => looksLikeDefaultDrainGateSkippedRequiredGate(observation));
+  const appliedAfterGateObservations = observations.filter((observation) => looksLikeDefaultDrainGateAppliedAfterGates(observation));
+  const candidatesWithGateObservations = observations.filter((observation) => looksLikeDefaultDrainGateCandidateWithGates(observation));
+  const candidatesMissingGateObservations = observations.filter((observation) => looksLikeDefaultDrainGateCandidateMissingGates(observation));
+
+  const candidatesWithGates = collectDefaultDrainGateGateSummary(candidatesWithGateObservations);
+  const candidatesMissingGates = collectBundleHealthBucket(candidatesMissingGateObservations, {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  const appliedAfterGates = collectDefaultDrainGateGateSummary(appliedAfterGateObservations);
+  const failedGates = collectDefaultDrainGateGateSummary(failedGateObservations);
+  const skippedRequiredGates = collectDefaultDrainGateGateSummary(skippedRequiredGateObservations);
+  const trueHumanBlockers = collectBundleHealthHumanBlockers(trueHumanBlockerObservations, {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+
+  const configurationIssueCount = candidatesMissingGates.count + failedGates.count + skippedRequiredGates.count;
+  const gateBackedCount = appliedAfterGates.count + failedGates.count + skippedRequiredGates.count;
+  const status: FrontierInspectDefaultDrainGateHealthSummary['status'] = trueHumanBlockers.count > 0
+    ? 'blocked'
+    : configurationIssueCount > 0
+      ? 'warning'
+      : gateBackedCount > 0
+        ? 'info'
+        : candidatesWithGates.count > 0
+          ? 'ok'
+          : 'ok';
+
+  return {
+    kind: FRONTIER_INSPECT_DEFAULT_DRAIN_GATE_HEALTH_SUMMARY_KIND,
+    version: FRONTIER_INSPECT_DEFAULT_DRAIN_GATE_HEALTH_SUMMARY_VERSION,
+    generatedAt: Date.now(),
+    status,
+    headline: createDefaultDrainGateHealthHeadline({
+      status,
+      candidatesWithGates,
+      candidatesMissingGates,
+      appliedAfterGates,
+      failedGates,
+      skippedRequiredGates,
+      trueHumanBlockers
+    }),
+    cards: createInspectDefaultDrainGateHealthCards({
+      candidatesWithGates,
+      candidatesMissingGates,
+      appliedAfterGates,
+      failedGates,
+      skippedRequiredGates,
+      trueHumanBlockers
+    }),
+    candidatesWithGates,
+    candidatesMissingGates,
+    appliedAfterGates,
+    failedGates,
+    skippedRequiredGates,
+    trueHumanBlockers,
+    archivedEvidence: summarizeInspectBundle(bundle)
+  };
+}
+
+interface BundleHealthObservation {
+  id: string;
+  text: string;
+  sources: string[];
+  payloads: unknown[];
+  files: string[];
+  resources: string[];
+  kind?: string;
+  status?: string;
+  bundlePath?: string;
+  patchPath?: string;
+  jobId?: string;
+  taskId?: string;
+  decisionId?: string;
+  changedPaths: string[];
+  outputKind?: string;
+  terminalClassification?: string;
+  disposition?: string;
+  gatesPassed?: boolean;
+  order: number;
+}
+
+function createBundleHealthObservation(input: {
+  id: string;
+  kind?: string;
+  textParts: readonly (string | undefined)[];
+  payloads: readonly unknown[];
+  sources: readonly string[];
+  files?: readonly string[];
+  resources?: readonly string[];
+  status?: string;
+  bundlePath?: string;
+  patchPath?: string;
+  jobId?: string;
+  taskId?: string;
+  decisionId?: string;
+  changedPaths?: readonly string[];
+  outputKind?: string;
+  terminalClassification?: string;
+  disposition?: string;
+  gatesPassed?: boolean;
+  order: number;
+}): BundleHealthObservation {
+  return {
+    id: input.id,
+    text: input.textParts.filter(Boolean).join(' '),
+    sources: [...input.sources].sort(),
+    payloads: [...input.payloads],
+    files: uniqueStrings(input.files ?? []),
+    resources: uniqueStrings(input.resources ?? []),
+    kind: input.kind,
+    status: input.status,
+    bundlePath: input.bundlePath,
+    patchPath: input.patchPath,
+    jobId: input.jobId,
+    taskId: input.taskId,
+    decisionId: input.decisionId,
+    changedPaths: uniqueStrings(input.changedPaths ?? []),
+    outputKind: input.outputKind,
+    terminalClassification: input.terminalClassification,
+    disposition: input.disposition,
+    gatesPassed: input.gatesPassed,
+    order: input.order
+  };
+}
+
+function bundleHealthObservationFromArtifact(artifact: FrontierInspectArtifact, order: number): BundleHealthObservation {
+  const payloads: unknown[] = [];
+  if (artifact.data !== undefined) payloads[payloads.length] = artifact.data;
+  if (artifact.metadata !== undefined) payloads[payloads.length] = artifact.metadata;
+  const bundlePath = firstBundleHealthStringField(payloads, ['bundlePath', 'mergePath', 'bundle', 'merge']) ?? inferBundleHealthPathFromFiles(artifact.files, 'bundle');
+  const patchPath = firstBundleHealthStringField(payloads, ['patchPath', 'patch', 'changesPatch']) ?? inferBundleHealthPathFromFiles(artifact.files, 'patch');
+  const changedPaths = extractSwarmLifetimeStringArrayField(payloads, ['changedPaths', 'paths', 'writes', 'targets']);
+  const outputKind = firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']);
+  const terminalClassification = firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']);
+  const disposition = firstBundleHealthStringField(payloads, ['disposition']);
+  return createBundleHealthObservation({
+    id: artifact.id,
+    kind: artifact.kind,
+    textParts: [
+      artifact.id,
+      artifact.kind,
+      artifact.summary,
+      artifact.sourcePackage,
+      artifact.package,
+      artifact.feature,
+      artifact.tags.join(' '),
+      artifact.files.join(' '),
+      artifact.resources.join(' '),
+      firstBundleHealthStringField(payloads, ['status', 'state', 'phase', 'resultStatus', 'outcome']),
+      outputKind,
+      terminalClassification,
+      disposition,
+      bundlePath,
+      patchPath,
+      firstBundleHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(artifact.sourcePackage, artifact.package, artifact.files, artifact.resources),
+    files: artifact.files,
+    resources: artifact.resources,
+    status: extractSwarmLifetimeStatus(payloads),
+    bundlePath,
+    patchPath,
+    jobId: firstBundleHealthStringField(payloads, ['jobId']),
+    taskId: firstBundleHealthStringField(payloads, ['taskId']),
+    decisionId: firstBundleHealthStringField(payloads, ['decisionId']),
+    changedPaths,
+    outputKind,
+    terminalClassification,
+    disposition,
+    gatesPassed: firstBundleHealthBooleanField(payloads, ['gatesPassed', 'gatePassed', 'finalGateOk', 'verificationOk', 'checksPassed']),
+    order
+  });
+}
+
+function bundleHealthObservationFromEvent(event: FrontierInspectEvent, order: number): BundleHealthObservation {
+  const payloads: unknown[] = [];
+  if (event.value !== undefined) payloads[payloads.length] = event.value;
+  if (event.metadata !== undefined) payloads[payloads.length] = event.metadata;
+  const bundlePath = firstBundleHealthStringField(payloads, ['bundlePath', 'mergePath', 'bundle', 'merge']) ?? inferBundleHealthPathFromFiles([event.file, event.path].filter(isString), 'bundle');
+  const patchPath = firstBundleHealthStringField(payloads, ['patchPath', 'patch', 'changesPatch']) ?? inferBundleHealthPathFromFiles([event.file, event.path].filter(isString), 'patch');
+  return createBundleHealthObservation({
+    id: event.id,
+    kind: event.type,
+    textParts: [
+      event.id,
+      event.type,
+      event.label,
+      event.source,
+      event.sourcePackage,
+      event.package,
+      event.feature,
+      event.tags.join(' '),
+      event.file,
+      event.path,
+      event.resource,
+      event.status,
+      event.severity,
+      firstBundleHealthStringField(payloads, ['status', 'state', 'phase', 'resultStatus', 'outcome']),
+      firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']),
+      firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']),
+      firstBundleHealthStringField(payloads, ['disposition']),
+      bundlePath,
+      patchPath,
+      firstBundleHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(event.sourcePackage, event.package, [event.file], [event.resource, event.path, event.routeId, event.selector]),
+    files: [event.file].filter(isString),
+    resources: [event.resource, event.path, event.routeId, event.selector].filter(isString),
+    status: event.status ?? extractSwarmLifetimeStatus(payloads),
+    bundlePath,
+    patchPath,
+    jobId: firstBundleHealthStringField(payloads, ['jobId']),
+    taskId: firstBundleHealthStringField(payloads, ['taskId']),
+    decisionId: firstBundleHealthStringField(payloads, ['decisionId']),
+    changedPaths: extractSwarmLifetimeStringArrayField(payloads, ['changedPaths', 'paths', 'writes', 'targets']),
+    outputKind: firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']),
+    terminalClassification: firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']),
+    disposition: firstBundleHealthStringField(payloads, ['disposition']),
+    gatesPassed: firstBundleHealthBooleanField(payloads, ['gatesPassed', 'gatePassed', 'finalGateOk', 'verificationOk', 'checksPassed']),
+    order
+  });
+}
+
+function bundleHealthObservationFromEntry(entry: FrontierRegistryEntry, order: number): BundleHealthObservation {
+  const payloads = [entry.metadata];
+  return createBundleHealthObservation({
+    id: entry.id,
+    kind: entry.kind,
+    textParts: [
+      entry.id,
+      entry.kind,
+      entry.description,
+      entry.package,
+      entry.feature,
+      (entry.tags ?? []).join(' '),
+      normalizeSourceFiles(entry).join(' '),
+      (entry.touches ?? []).join(' '),
+      (entry.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      firstBundleHealthStringField(payloads, ['status', 'state', 'phase', 'resultStatus', 'outcome']),
+      firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']),
+      firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']),
+      firstBundleHealthStringField(payloads, ['disposition']),
+      firstBundleHealthStringField(payloads, ['bundlePath', 'mergePath', 'bundle', 'merge']),
+      firstBundleHealthStringField(payloads, ['patchPath', 'patch', 'changesPatch']),
+      firstBundleHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(entry.package, undefined, normalizeSourceFiles(entry), entry.touches),
+    files: normalizeSourceFiles(entry),
+    resources: entry.touches ?? [],
+    status: extractSwarmLifetimeStatus(payloads),
+    bundlePath: firstBundleHealthStringField(payloads, ['bundlePath', 'mergePath', 'bundle', 'merge']) ?? inferBundleHealthPathFromFiles(normalizeSourceFiles(entry), 'bundle'),
+    patchPath: firstBundleHealthStringField(payloads, ['patchPath', 'patch', 'changesPatch']) ?? inferBundleHealthPathFromFiles(normalizeSourceFiles(entry), 'patch'),
+    jobId: firstBundleHealthStringField(payloads, ['jobId']),
+    taskId: firstBundleHealthStringField(payloads, ['taskId']),
+    decisionId: firstBundleHealthStringField(payloads, ['decisionId']),
+    changedPaths: extractSwarmLifetimeStringArrayField(payloads, ['changedPaths', 'paths', 'writes', 'targets']),
+    outputKind: firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']),
+    terminalClassification: firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']),
+    disposition: firstBundleHealthStringField(payloads, ['disposition']),
+    gatesPassed: firstBundleHealthBooleanField(payloads, ['gatesPassed', 'gatePassed', 'finalGateOk', 'verificationOk', 'checksPassed']),
+    order
+  });
+}
+
+function bundleHealthObservationFromRecord(record: FrontierRegistryRecord, order: number): BundleHealthObservation {
+  const payloads = [record.metadata];
+  return createBundleHealthObservation({
+    id: record.id,
+    kind: record.kind,
+    textParts: [
+      record.id,
+      record.kind,
+      record.status,
+      record.error,
+      record.entryId,
+      record.durationMs === undefined ? undefined : String(record.durationMs),
+      (record.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (record.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      firstBundleHealthStringField(payloads, ['status', 'state', 'phase', 'resultStatus', 'outcome']),
+      firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']),
+      firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']),
+      firstBundleHealthStringField(payloads, ['disposition']),
+      firstBundleHealthStringField(payloads, ['bundlePath', 'mergePath', 'bundle', 'merge']),
+      firstBundleHealthStringField(payloads, ['patchPath', 'patch', 'changesPatch']),
+      firstBundleHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(undefined, undefined, [], []),
+    files: [],
+    resources: [],
+    status: record.status ?? extractSwarmLifetimeStatus(payloads),
+    bundlePath: firstBundleHealthStringField(payloads, ['bundlePath', 'mergePath', 'bundle', 'merge']),
+    patchPath: firstBundleHealthStringField(payloads, ['patchPath', 'patch', 'changesPatch']),
+    jobId: firstBundleHealthStringField(payloads, ['jobId']),
+    taskId: firstBundleHealthStringField(payloads, ['taskId']),
+    decisionId: firstBundleHealthStringField(payloads, ['decisionId']),
+    changedPaths: extractSwarmLifetimeStringArrayField(payloads, ['changedPaths', 'paths', 'writes', 'targets']),
+    outputKind: firstBundleHealthStringField(payloads, ['outputKind', 'kind', 'type']),
+    terminalClassification: firstBundleHealthStringField(payloads, ['terminalClassification', 'terminal', 'classification']),
+    disposition: firstBundleHealthStringField(payloads, ['disposition']),
+    gatesPassed: firstBundleHealthBooleanField(payloads, ['gatesPassed', 'gatePassed', 'finalGateOk', 'verificationOk', 'checksPassed']),
+    order
+  });
+}
+
+function collectBundleHealthObservations(bundle: FrontierInspectBundle): BundleHealthObservation[] {
+  const observations: BundleHealthObservation[] = [];
+  for (let i = 0; i < bundle.artifacts.length; i++) addUniqueObservation(observations, bundleHealthObservationFromArtifact(bundle.artifacts[i], observations.length));
+  for (let i = 0; i < bundle.events.length; i++) addUniqueObservation(observations, bundleHealthObservationFromEvent(bundle.events[i], observations.length));
+  for (let i = 0; i < bundle.graph.entries.length; i++) addUniqueObservation(observations, bundleHealthObservationFromEntry(bundle.graph.entries[i], observations.length));
+  for (let i = 0; i < bundle.graph.records.length; i++) addUniqueObservation(observations, bundleHealthObservationFromRecord(bundle.graph.records[i], observations.length));
+  return observations;
+}
+
+function collapseBundleHealthObservations(
+  observations: readonly BundleHealthObservation[]
+): Array<{ latest: BundleHealthObservation }> {
+  const byKey = new Map<string, BundleHealthObservation>();
+  for (const observation of observations) {
+    const key = bundleHealthObservationKey(observation);
+    const current = byKey.get(key);
+    if (current === undefined || current.order <= observation.order) byKey.set(key, observation);
+  }
+  return Array.from(byKey.values(), (latest) => ({ latest }));
+}
+
+function bundleHealthObservationKey(observation: BundleHealthObservation): string {
+  return [
+    observation.decisionId,
+    observation.jobId,
+    observation.taskId,
+    observation.bundlePath,
+    observation.patchPath,
+    observation.id
+  ].find((value) => value !== undefined && value !== '') ?? observation.id;
+}
+
+function collectBundleHealthBucket(
+  observations: readonly BundleHealthObservation[],
+  options: {
+    id?: (observation: BundleHealthObservation) => string | undefined;
+  } = {}
+): FrontierInspectBundleHealthBucketSummary {
+  const ids: string[] = [];
+  const sources: string[] = [];
+  for (const observation of observations) {
+    const id = options.id?.(observation) ?? observation.id;
+    if (id !== undefined && id !== '') addUnique(ids, id);
+    for (const source of observation.sources) addUnique(sources, source);
+  }
+  return {
+    count: ids.length,
+    ids: ids.sort(),
+    sources: sources.sort()
+  };
+}
+
+function collectBundleHealthHumanBlockers(
+  observations: readonly BundleHealthObservation[],
+  options: {
+    id?: (observation: BundleHealthObservation) => string | undefined;
+  } = {}
+): FrontierInspectBundleHealthHumanBlockerSummary {
+  const bucket = collectBundleHealthBucket(observations, options);
+  return {
+    ...bucket,
+    reasons: uniqueStrings(observations.flatMap((observation) => extractBundleHealthHumanBlockerReasons(observation)))
+  };
+}
+
+function createInspectBundleHealthCards(input: {
+  completeBundles: FrontierInspectBundleHealthBucketSummary;
+  generatedPatches: FrontierInspectBundleHealthBucketSummary;
+  missingPatch: FrontierInspectBundleHealthBucketSummary;
+  missingBundle: FrontierInspectBundleHealthBucketSummary;
+  noChangeDone: FrontierInspectBundleHealthBucketSummary;
+  evidenceOnlyDone: FrontierInspectBundleHealthBucketSummary;
+  failedGate: FrontierInspectBundleHealthBucketSummary;
+  trueHumanBlockers: FrontierInspectBundleHealthHumanBlockerSummary;
+}): FrontierInspectBundleHealthCard[] {
+  return [
+    {
+      id: 'complete-bundles',
+      label: 'Complete bundles',
+      value: input.completeBundles.count,
+      detail: `${formatBundleHealthCount(input.completeBundles.count, 'complete bundle')} with patch and bundle evidence`,
+      status: input.completeBundles.count > 0 ? 'ok' : 'ok',
+      action: 'Review the bundles that landed cleanly.',
+      sourceFields: ['completeBundles.count', 'completeBundles.ids']
+    },
+    {
+      id: 'generated-patches',
+      label: 'Generated patches',
+      value: input.generatedPatches.count,
+      detail: `${formatBundleHealthCount(input.generatedPatches.count, 'generated patch')} from evidence or projection output`,
+      status: input.generatedPatches.count > 0 ? 'info' : 'ok',
+      action: 'Inspect the generated patch outputs and their evidence.',
+      sourceFields: ['generatedPatches.count', 'generatedPatches.ids']
+    },
+    {
+      id: 'missing-patch',
+      label: 'Missing patch',
+      value: input.missingPatch.count,
+      detail: `${formatBundleHealthCount(input.missingPatch.count, 'bundle')} is missing a patch artifact`,
+      status: input.missingPatch.count > 0 ? 'warning' : 'ok',
+      action: 'Regenerate the missing patch or rerun the worker.',
+      sourceFields: ['missingPatch.count', 'missingPatch.ids']
+    },
+    {
+      id: 'missing-bundle',
+      label: 'Missing bundle',
+      value: input.missingBundle.count,
+      detail: `${formatBundleHealthCount(input.missingBundle.count, 'patch')} is missing a merge bundle`,
+      status: input.missingBundle.count > 0 ? 'warning' : 'ok',
+      action: 'Collect or regenerate the missing merge bundle.',
+      sourceFields: ['missingBundle.count', 'missingBundle.ids']
+    },
+    {
+      id: 'no-change-done',
+      label: 'No-change done',
+      value: input.noChangeDone.count,
+      detail: `${formatBundleHealthCount(input.noChangeDone.count, 'no-change result')} finished cleanly`,
+      status: input.noChangeDone.count > 0 ? 'ok' : 'ok',
+      action: 'No follow-up is needed unless the no-change result looks unexpected.',
+      sourceFields: ['noChangeDone.count', 'noChangeDone.ids']
+    },
+    {
+      id: 'evidence-only-done',
+      label: 'Evidence-only done',
+      value: input.evidenceOnlyDone.count,
+      detail: `${formatBundleHealthCount(input.evidenceOnlyDone.count, 'evidence-only result')} finished without a patch`,
+      status: input.evidenceOnlyDone.count > 0 ? 'info' : 'ok',
+      action: 'Use the evidence-only output as the terminal result.',
+      sourceFields: ['evidenceOnlyDone.count', 'evidenceOnlyDone.ids']
+    },
+    {
+      id: 'failed-gate',
+      label: 'Failed gate',
+      value: input.failedGate.count,
+      detail: `${formatBundleHealthCount(input.failedGate.count, 'bundle')} failed a required gate`,
+      status: input.failedGate.count > 0 ? 'warning' : 'ok',
+      action: 'Rerun the failing gates or inspect the failure logs.',
+      sourceFields: ['failedGate.count', 'failedGate.ids']
+    },
+    {
+      id: 'true-human-blockers',
+      label: 'True human blockers',
+      value: input.trueHumanBlockers.count,
+      detail: `${formatBundleHealthCount(input.trueHumanBlockers.count, 'explicit human question')} needs authority or policy input`,
+      status: input.trueHumanBlockers.count > 0 ? 'blocked' : 'ok',
+      action: 'Escalate only the questions that truly need human authority.',
+      sourceFields: ['trueHumanBlockers.count', 'trueHumanBlockers.ids', 'trueHumanBlockers.reasons']
+    }
+  ];
+}
+
+function createBundleHealthHeadline(input: {
+  status: 'ok' | 'info' | 'warning' | 'blocked' | 'unavailable';
+  completeBundles: FrontierInspectBundleHealthBucketSummary;
+  generatedPatches: FrontierInspectBundleHealthBucketSummary;
+  missingPatch: FrontierInspectBundleHealthBucketSummary;
+  missingBundle: FrontierInspectBundleHealthBucketSummary;
+  noChangeDone: FrontierInspectBundleHealthBucketSummary;
+  evidenceOnlyDone: FrontierInspectBundleHealthBucketSummary;
+  failedGate: FrontierInspectBundleHealthBucketSummary;
+  trueHumanBlockers: FrontierInspectBundleHealthHumanBlockerSummary;
+}): string {
+  const healthyCount = input.completeBundles.count + input.generatedPatches.count + input.noChangeDone.count + input.evidenceOnlyDone.count;
+  const issueCount = input.missingPatch.count + input.missingBundle.count + input.failedGate.count + input.trueHumanBlockers.count;
+  if (healthyCount === 0 && issueCount === 0) return 'No bundle health evidence found.';
+  if (input.status === 'blocked') {
+    return `${formatBundleHealthCount(input.trueHumanBlockers.count, 'true human blocker')} and ${formatBundleHealthCount(input.failedGate.count, 'failed gate')} need attention.`;
+  }
+  if (input.status === 'warning') {
+    return `${formatBundleHealthCount(healthyCount, 'healthy bundle state')} plus ${formatBundleHealthCount(issueCount, 'bundle health issue')}.`;
+  }
+  if (input.generatedPatches.count > 0 || input.evidenceOnlyDone.count > 0) {
+    return `${formatBundleHealthCount(healthyCount, 'healthy bundle state')} and ${formatBundleHealthCount(input.generatedPatches.count + input.evidenceOnlyDone.count, 'terminal evidence result')}.`;
+  }
+  return `${formatBundleHealthCount(healthyCount, 'healthy bundle state')} ready for dashboard review.`;
+}
+
+function createInspectDefaultDrainGateHealthCards(input: {
+  candidatesWithGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  candidatesMissingGates: FrontierInspectDefaultDrainGateHealthBucketSummary;
+  appliedAfterGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  failedGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  skippedRequiredGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  trueHumanBlockers: FrontierInspectDefaultDrainGateHealthHumanBlockerSummary;
+}): FrontierInspectDefaultDrainGateHealthCard[] {
+  return [
+    {
+      id: 'candidates-with-gates',
+      label: 'Candidates with gates',
+      value: input.candidatesWithGates.count,
+      detail: `${formatBundleHealthCount(input.candidatesWithGates.count, 'candidate')} carry ${formatBundleHealthCount(input.candidatesWithGates.requiredCount, 'required gate')}`,
+      status: input.candidatesWithGates.count > 0 ? 'info' : 'ok',
+      action: 'Review the gate-backed candidates and their gate coverage.',
+      sourceFields: ['candidatesWithGates.count', 'candidatesWithGates.ids', 'candidatesWithGates.requiredCount', 'candidatesWithGates.passedCount', 'candidatesWithGates.failedCount', 'candidatesWithGates.skippedCount']
+    },
+    {
+      id: 'candidates-missing-gates',
+      label: 'Candidates missing gates',
+      value: input.candidatesMissingGates.count,
+      detail: `${formatBundleHealthCount(input.candidatesMissingGates.count, 'candidate')} have no gate evidence and need configuration review`,
+      status: input.candidatesMissingGates.count > 0 ? 'warning' : 'ok',
+      action: 'Add the missing gate evidence or revise the candidate configuration.',
+      sourceFields: ['candidatesMissingGates.count', 'candidatesMissingGates.ids']
+    },
+    {
+      id: 'failed-gates',
+      label: 'Failed gates',
+      value: input.failedGates.count,
+      detail: `${formatBundleHealthCount(input.failedGates.failedCount, 'failed gate')} across ${formatBundleHealthCount(input.failedGates.count, 'candidate')}`,
+      status: input.failedGates.count > 0 ? 'warning' : 'ok',
+      action: 'Inspect the failing gate logs and rerun the affected candidates.',
+      sourceFields: ['failedGates.count', 'failedGates.ids', 'failedGates.failedCount']
+    },
+    {
+      id: 'applied-after-gates',
+      label: 'Applied after gates',
+      value: input.appliedAfterGates.count,
+      detail: `${formatBundleHealthCount(input.appliedAfterGates.count, 'candidate')} resolved successfully after gates`,
+      status: input.appliedAfterGates.count > 0 ? 'info' : 'ok',
+      action: 'Surface the gate-backed candidates that landed cleanly.',
+      sourceFields: ['appliedAfterGates.count', 'appliedAfterGates.ids', 'appliedAfterGates.requiredCount', 'appliedAfterGates.passedCount', 'appliedAfterGates.failedCount', 'appliedAfterGates.skippedCount']
+    },
+    {
+      id: 'skipped-required-gates',
+      label: 'Skipped required gates',
+      value: input.skippedRequiredGates.count,
+      detail: `${formatBundleHealthCount(input.skippedRequiredGates.skippedCount, 'skipped required gate')} across ${formatBundleHealthCount(input.skippedRequiredGates.count, 'candidate')}`,
+      status: input.skippedRequiredGates.count > 0 ? 'warning' : 'ok',
+      action: 'Restore the skipped required gates before treating the result as healthy.',
+      sourceFields: ['skippedRequiredGates.count', 'skippedRequiredGates.ids', 'skippedRequiredGates.requiredCount', 'skippedRequiredGates.skippedCount']
+    },
+    {
+      id: 'true-human-blockers',
+      label: 'True human blockers',
+      value: input.trueHumanBlockers.count,
+      detail: `${formatBundleHealthCount(input.trueHumanBlockers.count, 'explicit human question')} needs authority or policy input`,
+      status: input.trueHumanBlockers.count > 0 ? 'blocked' : 'ok',
+      action: 'Escalate only the decisions that explicitly need human authority.',
+      sourceFields: ['trueHumanBlockers.count', 'trueHumanBlockers.ids', 'trueHumanBlockers.reasons']
+    }
+  ];
+}
+
+function createDefaultDrainGateHealthHeadline(input: {
+  status: 'ok' | 'info' | 'warning' | 'blocked' | 'unavailable';
+  candidatesWithGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  candidatesMissingGates: FrontierInspectDefaultDrainGateHealthBucketSummary;
+  appliedAfterGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  failedGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  skippedRequiredGates: FrontierInspectDefaultDrainGateHealthGateSummary;
+  trueHumanBlockers: FrontierInspectDefaultDrainGateHealthHumanBlockerSummary;
+}): string {
+  const configIssueCount = input.candidatesMissingGates.count + input.failedGates.count + input.skippedRequiredGates.count;
+  const gateBackedCount = input.appliedAfterGates.count + input.failedGates.count + input.skippedRequiredGates.count;
+  if (input.candidatesWithGates.count === 0 && configIssueCount === 0 && input.trueHumanBlockers.count === 0) {
+    return 'No default drain gate health evidence found.';
+  }
+  if (input.status === 'blocked') {
+    return `${formatBundleHealthCount(input.trueHumanBlockers.count, 'true human blocker')} and ${formatBundleHealthCount(configIssueCount, 'gate configuration issue')} need attention.`;
+  }
+  if (configIssueCount > 0) {
+    const parts: string[] = [];
+    if (input.appliedAfterGates.count > 0) {
+      parts.push(`${formatBundleHealthCount(input.appliedAfterGates.count, 'applied after gate candidate')}`);
+    }
+    if (input.candidatesMissingGates.count > 0) {
+      parts.push(`${formatBundleHealthCount(input.candidatesMissingGates.count, 'missing-gate candidate')}`);
+    }
+    if (input.failedGates.count > 0) {
+      parts.push(`${formatBundleHealthCount(input.failedGates.count, 'failed gate candidate')}`);
+    }
+    if (input.skippedRequiredGates.count > 0) {
+      parts.push(`${formatBundleHealthCount(input.skippedRequiredGates.count, 'skipped required gate candidate')}`);
+    }
+    return `${parts.join(', ')} need attention.`;
+  }
+  if (gateBackedCount > 0) {
+    return `${formatBundleHealthCount(input.appliedAfterGates.count, 'applied after gate candidate')} ready for dashboard review.`;
+  }
+  if (input.candidatesWithGates.count > 0) {
+    return `${formatBundleHealthCount(input.candidatesWithGates.count, 'candidate with gates')} ready for dashboard review.`;
+  }
+  return 'No default drain gate health evidence found.';
+}
+
+function collectDefaultDrainGateGateSummary(
+  observations: readonly BundleHealthObservation[]
+): FrontierInspectDefaultDrainGateHealthGateSummary {
+  const bucket = collectBundleHealthBucket(observations, {
+    id: (observation) => extractBundleHealthSubjectId(observation) ?? observation.id
+  });
+  let requiredCount = 0;
+  let passedCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  for (const observation of observations) {
+    const stats = collectDefaultDrainGateRecordStats(observation);
+    requiredCount += stats.requiredCount;
+    passedCount += stats.passedCount;
+    failedCount += stats.failedCount;
+    skippedCount += stats.skippedCount;
+  }
+  return {
+    ...bucket,
+    requiredCount,
+    passedCount,
+    failedCount,
+    skippedCount
+  };
+}
+
+function collectDefaultDrainGateRecordStats(observation: BundleHealthObservation): {
+  requiredCount: number;
+  passedCount: number;
+  failedCount: number;
+  skippedCount: number;
+  hasGateEvidence: boolean;
+} {
+  const records = collectDefaultDrainGateRecords(observation);
+  let requiredCount = 0;
+  let passedCount = 0;
+  let failedCount = 0;
+  let skippedCount = 0;
+  for (const gate of records) {
+    if (gate.required === true) requiredCount++;
+    if (gate.state === 'passed') passedCount++;
+    else if (gate.state === 'failed') failedCount++;
+    else if (gate.state === 'skipped') skippedCount++;
+  }
+  return {
+    requiredCount,
+    passedCount,
+    failedCount,
+    skippedCount,
+    hasGateEvidence: records.length > 0 || observation.gatesPassed !== undefined
+  };
+}
+
+function collectDefaultDrainGateRecords(observation: BundleHealthObservation): SwarmLifetimeGateRecord[] {
+  const records: SwarmLifetimeGateRecord[] = [];
+  const seen = new Set<string>();
+  for (const payload of observation.payloads) {
+    collectDefaultDrainGateRecordsFromValue(payload, records, seen);
+  }
+  return records;
+}
+
+function collectDefaultDrainGateRecordsFromValue(
+  value: unknown,
+  records: SwarmLifetimeGateRecord[],
+  seen: Set<string>
+): void {
+  if (!isRecord(value)) return;
+  const gateSources = [value.finalGateSummary, value.gateSummary, value.verification];
+  for (const source of gateSources) {
+    if (!isRecord(source)) continue;
+    const directGate = extractSwarmLifetimeGateRecord(source);
+    if (directGate !== undefined) addDefaultDrainGateRecord(records, seen, directGate);
+    const nestedGates = source.gates;
+    if (Array.isArray(nestedGates)) {
+      for (const gate of nestedGates) {
+        const nestedGate = extractSwarmLifetimeGateRecord(gate);
+        if (nestedGate !== undefined) addDefaultDrainGateRecord(records, seen, nestedGate);
+      }
+    }
+  }
+  const directGates = value.gates;
+  if (Array.isArray(directGates)) {
+    for (const gate of directGates) {
+      const nestedGate = extractSwarmLifetimeGateRecord(gate);
+      if (nestedGate !== undefined) addDefaultDrainGateRecord(records, seen, nestedGate);
+    }
+  }
+}
+
+function addDefaultDrainGateRecord(
+  records: SwarmLifetimeGateRecord[],
+  seen: Set<string>,
+  gate: SwarmLifetimeGateRecord
+): void {
+  const key = `${gate.id}|${gate.state ?? ''}|${String(gate.required ?? '')}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  records[records.length] = gate;
+}
+
+function looksLikeDefaultDrainGateCandidateWithGates(observation: BundleHealthObservation): boolean {
+  const stats = collectDefaultDrainGateRecordStats(observation);
+  if (stats.hasGateEvidence) return true;
+  return looksLikeDefaultDrainGateFailedGate(observation) || looksLikeDefaultDrainGateSkippedRequiredGate(observation) || looksLikeDefaultDrainGateAppliedAfterGates(observation);
+}
+
+function looksLikeDefaultDrainGateAppliedAfterGates(observation: BundleHealthObservation): boolean {
+  if (looksLikeBundleHealthHumanBlocker(observation)) return false;
+  const stateText = bundleHealthStateText(observation);
+  const stats = collectDefaultDrainGateRecordStats(observation);
+  if (!stats.hasGateEvidence) return false;
+  if (observation.gatesPassed === false) return false;
+  return /(?:applied[-\s]?after[-\s]?gate|applied|committed|complete|completed|generated[-\s]?patch|admitted[-\s]?merge[-\s]?bundle|admitted[-\s]?evidence[-\s]?json|accepted|resolved|success)/i.test(stateText);
+}
+
+function looksLikeDefaultDrainGateFailedGate(observation: BundleHealthObservation): boolean {
+  if (looksLikeBundleHealthHumanBlocker(observation)) return false;
+  const stateText = bundleHealthStateText(observation);
+  const stats = collectDefaultDrainGateRecordStats(observation);
+  if (observation.gatesPassed === false) return true;
+  return stats.failedCount > 0 || /(?:failed[-\s]?gate|gate[-\s]?failed|test[-\s]?fail|verification[-\s]?required|failed[-\s]?(?:evidence|apply)|stale[-\s]?patch|rejected|error\b)/i.test(stateText);
+}
+
+function looksLikeDefaultDrainGateSkippedRequiredGate(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  const stats = collectDefaultDrainGateRecordStats(observation);
+  return (stats.requiredCount > 0 && stats.skippedCount > 0) || /(?:skipped[-\s]?required|required[-\s]?gate.*skipped|skipped.*required[-\s]?gate|gate[-\s]?skipped)/i.test(stateText);
+}
+
+function looksLikeDefaultDrainGateCandidateMissingGates(observation: BundleHealthObservation): boolean {
+  if (looksLikeBundleHealthHumanBlocker(observation)) return false;
+  if (looksLikeDefaultDrainGateFailedGate(observation)) return false;
+  if (looksLikeDefaultDrainGateSkippedRequiredGate(observation)) return false;
+  if (looksLikeDefaultDrainGateAppliedAfterGates(observation)) return false;
+  const stateText = bundleHealthStateText(observation);
+  const stats = collectDefaultDrainGateRecordStats(observation);
+  if (stats.hasGateEvidence) return false;
+  return /(?:applied|committed|complete|completed|done|generated[-\s]?patch|admitted[-\s]?merge[-\s]?bundle|admitted[-\s]?evidence[-\s]?json|accepted|resolved|passed)/i.test(stateText);
+}
+
+type BundleHealthMeaning =
+  | 'complete-bundle'
+  | 'generated-patch'
+  | 'missing-patch'
+  | 'missing-bundle'
+  | 'no-change-done'
+  | 'evidence-only-done'
+  | 'failed-gate'
+  | 'true-human-blocker'
+  | 'unknown';
+
+function classifyBundleHealthMeaning(observation: BundleHealthObservation): BundleHealthMeaning {
+  if (looksLikeBundleHealthHumanBlocker(observation)) return 'true-human-blocker';
+  if (looksLikeBundleHealthFailedGate(observation)) return 'failed-gate';
+  if (looksLikeBundleHealthNoChangeDone(observation)) return 'no-change-done';
+  if (looksLikeBundleHealthEvidenceOnlyDone(observation)) return 'evidence-only-done';
+  if (looksLikeBundleHealthGeneratedPatch(observation)) return 'generated-patch';
+  if (looksLikeBundleHealthCompleteBundle(observation)) return 'complete-bundle';
+  if (looksLikeBundleHealthMissingPatch(observation)) return 'missing-patch';
+  if (looksLikeBundleHealthMissingBundle(observation)) return 'missing-bundle';
+  return 'unknown';
+}
+
+function extractBundleHealthSubjectId(observation: BundleHealthObservation): string | undefined {
+  if (observation.decisionId !== undefined) return observation.decisionId;
+  if (observation.jobId !== undefined) return observation.jobId;
+  if (observation.taskId !== undefined) return observation.taskId;
+  if (observation.bundlePath !== undefined) return observation.bundlePath;
+  if (observation.patchPath !== undefined) return observation.patchPath;
+  return observation.id;
+}
+
+function looksLikeBundleHealthHumanBlocker(observation: BundleHealthObservation): boolean {
+  return extractBundleHealthHumanBlockerContract(observation) !== undefined;
+}
+
+function looksLikeBundleHealthFailedGate(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  if (/\b(human[-\s]?(blocked|question))\b/.test(stateText)) return false;
+  if (observation.gatesPassed === false) return true;
+  return /(?:failed[-\s]?gate|gate[-\s]?failed|test[-\s]?fail|verification[-\s]?required|failed[-\s]?(?:evidence|apply)|stale[-\s]?patch|rejected|failed\b|error\b)/i.test(stateText);
+}
+
+function looksLikeBundleHealthNoChangeDone(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  return /(?:done[-\s]?no[-\s]?change|no[-\s]?change|unchanged|same|baseline)/i.test(stateText);
+}
+
+function looksLikeBundleHealthEvidenceOnlyDone(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  if (/(?:evidence[-\s]?only|discovery[-\s]?only|record[-\s]?only)/i.test(stateText)) return observation.changedPaths.length > 0 || !looksLikeBundleHealthNoChangeDone(observation);
+  return false;
+}
+
+function looksLikeBundleHealthGeneratedPatch(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  return /(?:admitted[-\s]?evidence[-\s]?json|evidence[-\s]?json|generated[-\s]?patch|patch[-\s]?only)/i.test(stateText);
+}
+
+function looksLikeBundleHealthCompleteBundle(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  if (/(?:admitted[-\s]?merge[-\s]?bundle|complete[-\s]?merge[-\s]?bundle|merge[-\s]?bundle|complete[-\s]?bundle)/i.test(stateText)) return true;
+  return bundleHealthHasBundle(observation) && bundleHealthHasPatch(observation);
+}
+
+function looksLikeBundleHealthMissingPatch(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  if (/(?:missing[-\s]?patch|missing[-\s]?evidence)/i.test(stateText)) return true;
+  return bundleHealthHasBundle(observation) && !bundleHealthHasPatch(observation);
+}
+
+function looksLikeBundleHealthMissingBundle(observation: BundleHealthObservation): boolean {
+  const stateText = bundleHealthStateText(observation);
+  if (/(?:missing[-\s]?bundle|stale[-\s]?patch)/i.test(stateText)) return true;
+  return bundleHealthHasPatch(observation) && !bundleHealthHasBundle(observation);
+}
+
+function bundleHealthStateText(observation: BundleHealthObservation): string {
+  return [
+    observation.status,
+    observation.outputKind,
+    observation.terminalClassification,
+    observation.disposition,
+    observation.kind,
+    observation.text
+  ].filter((value): value is string => typeof value === 'string' && value !== '').join(' ').toLowerCase();
+}
+
+function bundleHealthHasBundle(observation: BundleHealthObservation): boolean {
+  if (observation.bundlePath !== undefined) return true;
+  return observation.files.some((file) => /(?:^|\/)(?:merge(?:-bundle)?|bundle)\.json$/i.test(file));
+}
+
+function bundleHealthHasPatch(observation: BundleHealthObservation): boolean {
+  if (observation.patchPath !== undefined) return true;
+  return observation.files.some((file) => /(?:^|\/)changes\.patch$/i.test(file) || /\.patch$/i.test(file));
+}
+
+function extractBundleHealthHumanBlockerReasons(observation: BundleHealthObservation): string[] {
+  const contract = extractBundleHealthHumanBlockerContract(observation);
+  return contract === undefined ? [] : [contract.reason];
+}
+
+function extractBundleHealthHumanBlockerContract(observation: BundleHealthObservation): FrontierInspectAutonomousMergeHealthHumanQuestion | undefined {
+  for (const payload of observation.payloads) {
+    for (const key of ['reason', 'question', 'summary', 'message']) {
+      const raw = extractSwarmLifetimeStringField(payload, [key]);
+      const contract = parseAutonomousMergeHealthHumanQuestionContractLine(raw);
+      if (contract !== undefined) return contract;
+    }
+  }
+
+  const textIndex = observation.text.indexOf('human-question:');
+  if (textIndex !== -1) {
+    const contract = parseAutonomousMergeHealthHumanQuestionContractLine(observation.text.slice(textIndex));
+    if (contract !== undefined) return contract;
+  }
+
+  return undefined;
+}
+
+function inferBundleHealthPathFromFiles(files: readonly string[] | undefined, kind: 'bundle' | 'patch'): string | undefined {
+  if (files === undefined) return undefined;
+  for (const file of files) {
+    if (kind === 'bundle' && /(?:^|\/)(?:merge(?:-bundle)?|bundle)\.json$/i.test(file)) return file;
+    if (kind === 'patch' && /(?:^|\/)changes\.patch$/i.test(file)) return file;
+  }
+  return undefined;
+}
+
+function firstBundleHealthStringField(payloads: readonly unknown[], keys: readonly string[]): string | undefined {
+  return firstSwarmLifetimeStringField(payloads, keys);
+}
+
+function firstBundleHealthBooleanField(payloads: readonly unknown[], keys: readonly string[]): boolean | undefined {
+  for (const payload of payloads) {
+    const value = extractBundleHealthBooleanField(payload, keys);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function extractBundleHealthBooleanField(value: unknown, keys: readonly string[]): boolean | undefined {
+  if (!isRecord(value)) return undefined;
+  for (const key of keys) {
+    const raw = value[key];
+    if (typeof raw === 'boolean') return raw;
+    if (typeof raw === 'number') {
+      if (raw === 1) return true;
+      if (raw === 0) return false;
+    }
+    if (typeof raw === 'string') {
+      if (/^(true|yes|ok|passed|pass|clean)$/i.test(raw)) return true;
+      if (/^(false|no|failed|fail|blocked|error)$/i.test(raw)) return false;
+    }
+  }
+  for (const key of Object.keys(value)) {
+    const child = value[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const nested = extractBundleHealthBooleanField(item, keys);
+        if (nested !== undefined) return nested;
+      }
+      continue;
+    }
+    if (isRecord(child)) {
+      const nested = extractBundleHealthBooleanField(child, keys);
+      if (nested !== undefined) return nested;
+    }
+  }
+  return undefined;
+}
+
+function formatBundleHealthCount(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+function addUniqueObservation(observations: BundleHealthObservation[], observation: BundleHealthObservation): void {
+  observations[observations.length] = observation;
+}
+
 export function summarizeInspectBundle(bundle: FrontierInspectBundle): FrontierInspectSummary {
   const features = new Set<string>();
   const packages = new Set<string>();
@@ -2761,6 +4446,709 @@ function materializeCandidates<T>(ids: Set<string>, map: Map<string, T>, order: 
   return rows.map((row) => row.value);
 }
 
+interface AutonomousMergeHealthObservation extends SwarmLifetimeObservation {
+  lane?: string;
+  jobId?: string;
+  taskId?: string;
+  decisionId?: string;
+  queueItemIds: string[];
+  coordinatorId?: string;
+  order: number;
+  timestamp?: number;
+}
+
+interface AutonomousMergeHealthComponent {
+  subjectId: string;
+  aliases: string[];
+  observations: AutonomousMergeHealthObservation[];
+  latest: AutonomousMergeHealthObservation;
+}
+
+function collectAutonomousMergeHealthObservations(bundle: FrontierInspectBundle): AutonomousMergeHealthObservation[] {
+  const observations: AutonomousMergeHealthObservation[] = [];
+  let order = 0;
+  for (const artifact of bundle.artifacts) observations[observations.length] = autonomousMergeHealthObservationFromArtifact(artifact, order++);
+  for (const event of bundle.events) observations[observations.length] = autonomousMergeHealthObservationFromEvent(event, order++);
+  for (const entry of bundle.graph.entries) observations[observations.length] = autonomousMergeHealthObservationFromEntry(entry, order++);
+  for (const record of bundle.graph.records) observations[observations.length] = autonomousMergeHealthObservationFromRecord(record, order++);
+  return observations.filter((observation) => observation !== undefined);
+}
+
+function collapseAutonomousMergeHealthObservations(
+  observations: readonly AutonomousMergeHealthObservation[]
+): AutonomousMergeHealthComponent[] {
+  const components: AutonomousMergeHealthComponent[] = [];
+  const componentByAlias = new Map<string, AutonomousMergeHealthComponent>();
+
+  for (const observation of observations) {
+    const aliases = autonomousMergeHealthObservationAliases(observation);
+    let component: AutonomousMergeHealthComponent | undefined;
+    for (const alias of aliases) {
+      const existing = componentByAlias.get(alias);
+      if (existing !== undefined) {
+        component = existing;
+        break;
+      }
+    }
+    if (component === undefined) {
+      component = {
+        subjectId: aliases[0] ?? observation.id,
+        aliases: [],
+        observations: [],
+        latest: observation
+      };
+      components[components.length] = component;
+    }
+    component.observations[component.observations.length] = observation;
+    if (compareAutonomousMergeHealthObservationOrder(observation, component.latest) > 0) component.latest = observation;
+    for (const alias of aliases) {
+      componentByAlias.set(alias, component);
+      addUnique(component.aliases, alias);
+    }
+  }
+
+  return components.sort((left, right) => compareAutonomousMergeHealthObservationOrder(left.latest, right.latest));
+}
+
+function autonomousMergeHealthObservationAliases(observation: AutonomousMergeHealthObservation): string[] {
+  return uniqueStrings([
+    ...observation.queueItemIds,
+    observation.taskId,
+    observation.jobId,
+    observation.decisionId,
+    observation.id
+  ].filter(isString));
+}
+
+function compareAutonomousMergeHealthObservationOrder(
+  left: AutonomousMergeHealthObservation,
+  right: AutonomousMergeHealthObservation
+): number {
+  if (left.timestamp !== undefined && right.timestamp !== undefined && left.timestamp !== right.timestamp) {
+    return left.timestamp - right.timestamp;
+  }
+  return left.order - right.order;
+}
+
+function createAutonomousMergeHealthObservation(input: {
+  id: string;
+  kind?: string;
+  textParts: readonly (string | undefined)[];
+  payloads: readonly unknown[];
+  sources: readonly string[];
+  status?: string;
+  lane?: string;
+  jobId?: string;
+  taskId?: string;
+  decisionId?: string;
+  queueItemIds?: readonly string[];
+  coordinatorId?: string;
+  timestamp?: number;
+  order: number;
+}): AutonomousMergeHealthObservation {
+  return {
+    id: input.id,
+    text: input.textParts.filter(Boolean).join(' '),
+    kind: input.kind,
+    sources: [...input.sources].sort(),
+    payloads: [...input.payloads],
+    status: input.status,
+    lane: input.lane,
+    jobId: input.jobId,
+    taskId: input.taskId,
+    decisionId: input.decisionId,
+    queueItemIds: uniqueStrings(input.queueItemIds ?? []),
+    coordinatorId: input.coordinatorId,
+    order: input.order,
+    ...(input.timestamp !== undefined ? { timestamp: input.timestamp } : {})
+  };
+}
+
+function autonomousMergeHealthObservationFromArtifact(artifact: FrontierInspectArtifact, order: number): AutonomousMergeHealthObservation {
+  const payloads: unknown[] = [];
+  if (artifact.data !== undefined) payloads[payloads.length] = artifact.data;
+  if (artifact.metadata !== undefined) payloads[payloads.length] = artifact.metadata;
+  return createAutonomousMergeHealthObservation({
+    id: artifact.id,
+    kind: artifact.kind,
+    textParts: [
+      artifact.id,
+      artifact.kind,
+      artifact.summary,
+      artifact.sourcePackage,
+      artifact.package,
+      artifact.feature,
+      artifact.tags.join(' '),
+      artifact.files.join(' '),
+      artifact.resources.join(' '),
+      artifact.entryIds.join(' '),
+      artifact.recordIds.join(' '),
+      firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+      firstAutonomousMergeHealthStringField(payloads, ['status', 'state', 'phase', 'resultStatus', 'outcome']),
+      firstAutonomousMergeHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(artifact.sourcePackage, artifact.package, artifact.files, artifact.resources),
+    status: extractSwarmLifetimeStatus(payloads),
+    lane: firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+    jobId: firstAutonomousMergeHealthStringField(payloads, ['jobId']),
+    taskId: firstAutonomousMergeHealthStringField(payloads, ['taskId']),
+    decisionId: firstAutonomousMergeHealthStringField(payloads, ['decisionId']),
+    queueItemIds: extractAutonomousMergeHealthQueueItemIds(payloads),
+    coordinatorId: extractAutonomousMergeHealthCoordinatorId(payloads),
+    timestamp: artifact.timestamp,
+    order
+  });
+}
+
+function autonomousMergeHealthObservationFromEvent(event: FrontierInspectEvent, order: number): AutonomousMergeHealthObservation {
+  const payloads: unknown[] = [];
+  if (event.value !== undefined) payloads[payloads.length] = event.value;
+  if (event.metadata !== undefined) payloads[payloads.length] = event.metadata;
+  return createAutonomousMergeHealthObservation({
+    id: event.id,
+    kind: event.type,
+    textParts: [
+      event.id,
+      event.type,
+      event.label,
+      event.source,
+      event.sourcePackage,
+      event.package,
+      event.feature,
+      event.tags.join(' '),
+      event.file,
+      event.path,
+      event.resource,
+      event.selector,
+      event.routeId,
+      event.status,
+      event.severity,
+      firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+      firstAutonomousMergeHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(event.sourcePackage, event.package, [event.file], [event.resource, event.path, event.routeId, event.selector]),
+    status: event.status ?? extractSwarmLifetimeStatus(payloads),
+    lane: firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+    jobId: firstAutonomousMergeHealthStringField(payloads, ['jobId']),
+    taskId: firstAutonomousMergeHealthStringField(payloads, ['taskId']),
+    decisionId: firstAutonomousMergeHealthStringField(payloads, ['decisionId']),
+    queueItemIds: extractAutonomousMergeHealthQueueItemIds(payloads),
+    coordinatorId: extractAutonomousMergeHealthCoordinatorId(payloads),
+    timestamp: event.timestamp,
+    order
+  });
+}
+
+function autonomousMergeHealthObservationFromEntry(entry: FrontierRegistryEntry, order: number): AutonomousMergeHealthObservation {
+  const payloads = [entry.metadata];
+  return createAutonomousMergeHealthObservation({
+    id: entry.id,
+    kind: entry.kind,
+    textParts: [
+      entry.id,
+      entry.kind,
+      entry.description,
+      entry.package,
+      entry.feature,
+      (entry.tags ?? []).join(' '),
+      normalizeSourceFiles(entry).join(' '),
+      (entry.touches ?? []).join(' '),
+      (entry.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (entry.dependsOn ?? []).join(' '),
+      firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+      firstAutonomousMergeHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(entry.package, undefined, normalizeSourceFiles(entry), entry.touches),
+    status: extractSwarmLifetimeStatus(payloads),
+    lane: firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+    jobId: firstAutonomousMergeHealthStringField(payloads, ['jobId']),
+    taskId: firstAutonomousMergeHealthStringField(payloads, ['taskId']),
+    decisionId: firstAutonomousMergeHealthStringField(payloads, ['decisionId']),
+    queueItemIds: extractAutonomousMergeHealthQueueItemIds(payloads),
+    coordinatorId: extractAutonomousMergeHealthCoordinatorId(payloads),
+    order
+  });
+}
+
+function autonomousMergeHealthObservationFromRecord(record: FrontierRegistryRecord, order: number): AutonomousMergeHealthObservation {
+  const payloads = [record.metadata];
+  return createAutonomousMergeHealthObservation({
+    id: record.id,
+    kind: record.kind,
+    textParts: [
+      record.id,
+      record.kind,
+      record.status,
+      record.error,
+      record.entryId,
+      record.durationMs === undefined ? undefined : String(record.durationMs),
+      (record.reads ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      (record.writes ?? []).map((path) => normalizeFrontierRegistryPath(path)).join(' '),
+      firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+      firstAutonomousMergeHealthStringField(payloads, ['jobId', 'taskId', 'decisionId'])
+    ],
+    payloads,
+    sources: collectSwarmLifetimeSources(undefined, undefined, [], []),
+    status: record.status ?? extractSwarmLifetimeStatus(payloads),
+    lane: firstAutonomousMergeHealthStringField(payloads, ['lane', 'queueLane', 'scope', 'queue']),
+    jobId: firstAutonomousMergeHealthStringField(payloads, ['jobId']),
+    taskId: firstAutonomousMergeHealthStringField(payloads, ['taskId']),
+    decisionId: firstAutonomousMergeHealthStringField(payloads, ['decisionId']),
+    queueItemIds: extractAutonomousMergeHealthQueueItemIds(payloads),
+    coordinatorId: extractAutonomousMergeHealthCoordinatorId(payloads),
+    order
+  });
+}
+
+function firstAutonomousMergeHealthStringField(payloads: readonly unknown[], keys: readonly string[]): string | undefined {
+  for (const payload of payloads) {
+    const value = extractSwarmLifetimeStringField(payload, keys);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function extractAutonomousMergeHealthQueueItemIds(payloads: readonly unknown[]): string[] {
+  const ids: string[] = [];
+  for (const payload of payloads) {
+    for (const id of extractSwarmLifetimeStringArrayField(payload, ['queueItemIds', 'queueItemId', 'queueIds', 'queueItems'])) addUnique(ids, id);
+  }
+  return ids;
+}
+
+function extractAutonomousMergeHealthCoordinatorId(payloads: readonly unknown[]): string | undefined {
+  return firstAutonomousMergeHealthStringField(payloads, ['coordinatorId', 'coordinator', 'ownerId', 'owner', 'agentId', 'workerId', 'leaseId']);
+}
+
+function extractAutonomousMergeHealthLane(observation: AutonomousMergeHealthObservation): string | undefined {
+  if (observation.lane !== undefined) return observation.lane;
+  return firstAutonomousMergeHealthStringField(observation.payloads, ['lane', 'queueLane', 'scope', 'queue']);
+}
+
+function collectAutonomousMergeHealthBucket(
+  observations: readonly AutonomousMergeHealthObservation[],
+  options: {
+    id?: (observation: AutonomousMergeHealthObservation) => string | undefined;
+  } = {}
+): FrontierInspectAutonomousMergeHealthBucketSummary {
+  const ids: string[] = [];
+  const sources: string[] = [];
+  for (const observation of observations) {
+    const id = options.id?.(observation) ?? observation.id;
+    if (id !== undefined && id !== '') addUnique(ids, id);
+    for (const source of observation.sources) addUnique(sources, source);
+  }
+  return {
+    count: ids.length,
+    ids: ids.sort(),
+    sources: sources.sort()
+  };
+}
+
+function collectAutonomousMergeHealthTerminalDecisions(
+  observations: readonly AutonomousMergeHealthObservation[]
+): FrontierInspectAutonomousMergeHealthTerminalDecisionSummary {
+  const bucket = collectAutonomousMergeHealthBucket(observations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  const statuses = uniqueStrings(observations.map((observation) => observation.status ?? 'unknown'));
+  return {
+    ...bucket,
+    statuses
+  };
+}
+
+function collectAutonomousMergeHealthReviewDebt(
+  observations: readonly AutonomousMergeHealthObservation[],
+  generatedAt: number
+): FrontierInspectAutonomousMergeHealthReviewDebtSummary {
+  const bucket = collectAutonomousMergeHealthBucket(observations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  const items = collectAutonomousMergeHealthReviewDebtItems(observations, generatedAt);
+  return {
+    ...bucket,
+    coordinatorReviewCount: bucket.count,
+    items
+  };
+}
+
+function collectAutonomousMergeHealthReviewDebtItems(
+  observations: readonly AutonomousMergeHealthObservation[],
+  generatedAt: number
+): FrontierInspectAutonomousMergeHealthReviewDebtItem[] {
+  return observations.map((observation) => ({
+    id: extractAutonomousMergeHealthDecisionId(observation) ?? observation.id,
+    reason: extractAutonomousMergeHealthReviewDebtReason(observation) ?? observation.status ?? observation.kind,
+    owner: extractAutonomousMergeHealthReviewDebtOwner(observation),
+    ageMs: extractAutonomousMergeHealthReviewDebtAgeMs(observation, generatedAt),
+    terminalPath: extractAutonomousMergeHealthReviewDebtTerminalPath(observation),
+    sources: [...observation.sources].sort()
+  })).sort(compareAutonomousMergeHealthReviewDebtItems);
+}
+
+function compareAutonomousMergeHealthReviewDebtItems(
+  left: FrontierInspectAutonomousMergeHealthReviewDebtItem,
+  right: FrontierInspectAutonomousMergeHealthReviewDebtItem
+): number {
+  const leftAge = left.ageMs ?? -1;
+  const rightAge = right.ageMs ?? -1;
+  if (leftAge !== rightAge) return rightAge - leftAge;
+  const reasonCompare = compareAutonomousMergeHealthReviewDebtStrings(left.reason, right.reason);
+  if (reasonCompare !== 0) return reasonCompare;
+  const ownerCompare = compareAutonomousMergeHealthReviewDebtStrings(left.owner, right.owner);
+  if (ownerCompare !== 0) return ownerCompare;
+  const terminalPathCompare = compareAutonomousMergeHealthReviewDebtStrings(left.terminalPath, right.terminalPath);
+  if (terminalPathCompare !== 0) return terminalPathCompare;
+  return left.id.localeCompare(right.id);
+}
+
+function compareAutonomousMergeHealthReviewDebtStrings(left: string | undefined, right: string | undefined): number {
+  if (left === undefined && right === undefined) return 0;
+  if (left === undefined) return 1;
+  if (right === undefined) return -1;
+  return left.localeCompare(right);
+}
+
+function extractAutonomousMergeHealthReviewDebtReason(observation: AutonomousMergeHealthObservation): string | undefined {
+  return firstAutonomousMergeHealthStringField(observation.payloads, ['reason', 'summary', 'message', 'question', 'description', 'title']);
+}
+
+function extractAutonomousMergeHealthReviewDebtOwner(observation: AutonomousMergeHealthObservation): string | undefined {
+  return firstAutonomousMergeHealthStringField(observation.payloads, ['owner', 'ownerId', 'coordinator', 'coordinatorId', 'reviewer', 'reviewerId', 'agentId', 'workerId', 'assignee', 'assigneeId', 'leaseId']);
+}
+
+function extractAutonomousMergeHealthReviewDebtAgeMs(
+  observation: AutonomousMergeHealthObservation,
+  generatedAt: number
+): number | undefined {
+  if (observation.timestamp !== undefined) return Math.max(0, generatedAt - observation.timestamp);
+  const explicitAge = firstSwarmLifetimeNumberField(observation.payloads, ['ageMs', 'age', 'elapsedMs', 'durationMs']);
+  if (explicitAge !== undefined) return Math.max(0, Math.floor(explicitAge));
+  const createdAt = firstSwarmLifetimeNumberField(observation.payloads, ['createdAt', 'openedAt', 'timestamp', 'startedAt', 'generatedAt']);
+  if (createdAt !== undefined) return Math.max(0, generatedAt - createdAt);
+  return undefined;
+}
+
+function extractAutonomousMergeHealthReviewDebtTerminalPath(observation: AutonomousMergeHealthObservation): string | undefined {
+  const payloadPath = firstAutonomousMergeHealthStringField(observation.payloads, ['terminalPath', 'patchPath', 'bundlePath', 'changedPath', 'path', 'file', 'resource', 'surface', 'routeId', 'selector']);
+  if (payloadPath !== undefined) return payloadPath;
+  for (const source of observation.sources) {
+    if (source.startsWith('file:')) return source.slice('file:'.length);
+    if (source.startsWith('resource:')) return source.slice('resource:'.length);
+    if (source.startsWith('path:')) return source.slice('path:'.length);
+  }
+  if (observation.lane !== undefined) return observation.lane;
+  return undefined;
+}
+
+function collectAutonomousMergeHealthHumanQuestions(
+  observations: readonly AutonomousMergeHealthObservation[]
+): FrontierInspectAutonomousMergeHealthHumanQuestionSummary {
+  const questions: FrontierInspectAutonomousMergeHealthHumanQuestion[] = [];
+  for (const observation of observations) {
+    const question = extractAutonomousMergeHealthHumanQuestionContract(observation);
+    if (question === undefined) continue;
+    questions[questions.length] = {
+      ...question,
+      id: extractAutonomousMergeHealthQuestionId(observation) ?? question.id,
+      status: observation.status,
+      sources: observation.sources.slice().sort()
+    };
+  }
+  const bucket = collectAutonomousMergeHealthBucket(observations, {
+    id: (observation) => extractAutonomousMergeHealthQuestionId(observation) ?? observation.id
+  });
+  const reasons = uniqueStrings(questions.map((question) => question.reason));
+  return {
+    ...bucket,
+    reasons,
+    questions: questions.sort((left, right) => left.code.localeCompare(right.code))
+  };
+}
+
+function collectAutonomousMergeHealthCleanup(
+  observations: readonly AutonomousMergeHealthObservation[]
+): FrontierInspectAutonomousMergeHealthCleanupSummary {
+  const bucket = collectAutonomousMergeHealthBucket(observations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  let staleCount = 0;
+  let rerunCount = 0;
+  for (const observation of observations) {
+    if (looksLikeAutonomousMergeHealthStale(observation)) staleCount++;
+    if (looksLikeAutonomousMergeHealthRerun(observation)) rerunCount++;
+  }
+  return {
+    ...bucket,
+    staleCount,
+    rerunCount
+  };
+}
+
+function collectAutonomousMergeHealthAppliedThroughput(
+  observations: readonly AutonomousMergeHealthObservation[]
+): FrontierInspectAutonomousMergeHealthAppliedThroughputSummary {
+  const bucket = collectAutonomousMergeHealthBucket(observations, {
+    id: (observation) => extractAutonomousMergeHealthDecisionId(observation) ?? observation.id
+  });
+  let appliedCount = 0;
+  let committedCount = 0;
+  for (const observation of observations) {
+    if (observation.status !== undefined && /^applied$/i.test(observation.status)) appliedCount++;
+    if (observation.status !== undefined && /^committed$/i.test(observation.status)) committedCount++;
+  }
+  return {
+    ...bucket,
+    appliedCount,
+    committedCount
+  };
+}
+
+function extractAutonomousMergeHealthDecisionId(observation: AutonomousMergeHealthObservation): string | undefined {
+  if (observation.decisionId !== undefined) return observation.decisionId;
+  const queueItemIds = observation.queueItemIds;
+  if (queueItemIds.length > 0) return queueItemIds[0];
+  for (const payload of observation.payloads) {
+    const value = extractSwarmLifetimeStringField(payload, ['decisionId', 'decision', 'taskId', 'jobId', 'id']);
+    if (value !== undefined) return value;
+  }
+  return observation.decisionId ?? observation.taskId ?? observation.jobId;
+}
+
+function extractAutonomousMergeHealthHumanQuestionContract(observation: SwarmLifetimeObservation): FrontierInspectAutonomousMergeHealthHumanQuestion | undefined {
+  for (const payload of observation.payloads) {
+    for (const key of ['reason', 'question', 'summary', 'message']) {
+      const raw = extractSwarmLifetimeStringField(payload, [key]);
+      const contract = parseAutonomousMergeHealthHumanQuestionContractLine(raw);
+      if (contract !== undefined) return contract;
+    }
+  }
+
+  const textIndex = observation.text.indexOf('human-question:');
+  if (textIndex !== -1) {
+    const contract = parseAutonomousMergeHealthHumanQuestionContractLine(observation.text.slice(textIndex));
+    if (contract !== undefined) return contract;
+  }
+
+  return undefined;
+}
+
+function extractAutonomousMergeHealthQuestionId(observation: SwarmLifetimeObservation): string | undefined {
+  for (const payload of observation.payloads) {
+    const value = extractSwarmLifetimeStringField(payload, ['questionId', 'questionCode', 'decisionId', 'jobId', 'taskId', 'queueItemId', 'id']);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function parseAutonomousMergeHealthHumanQuestionContractLine(
+  raw: string | undefined
+): FrontierInspectAutonomousMergeHealthHumanQuestion | undefined {
+  if (raw === undefined) return undefined;
+  const text = raw.trim();
+  if (!text.startsWith('human-question:')) return undefined;
+  const match = text.match(
+    /^human-question:\s*owner=([^;]+);\s*surface=([^;]+);\s*missing-authority=([^;]+);\s*question=([^;]+);\s*answer-code=([^;]+)\s*$/
+  );
+  if (match === null) return undefined;
+  return {
+    id: 'human-question:' + fnv1a32(text),
+    code: text,
+    owner: match[1].trim(),
+    surface: match[2].trim(),
+    missingAuthority: match[3].trim(),
+    question: match[4].trim(),
+    answerCode: match[5].trim(),
+    reason: text,
+    sources: []
+  };
+}
+
+function extractAutonomousMergeHealthHumanQuestionReasons(observation: AutonomousMergeHealthObservation): string[] {
+  const contract = extractAutonomousMergeHealthHumanQuestionContract(observation);
+  return contract === undefined ? [] : [contract.reason];
+}
+
+function looksLikeAutonomousMergeHealthActiveCoordinator(observation: AutonomousMergeHealthObservation): boolean {
+  const coordinatorId = observation.coordinatorId ?? extractAutonomousMergeHealthCoordinatorId(observation.payloads);
+  if (coordinatorId === undefined) return false;
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(active|running|leased|working|in-?progress|inflight)$/.test(status)) return true;
+  if (/\b(active|running|leased|working|in[- ]progress|inflight)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'lifecycle'], /^(active|running|leased|working|in-?progress|inflight)$/i));
+}
+
+function looksLikeAutonomousMergeHealthTerminalDecision(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed|checked)$/i.test(status)) return true;
+  if (/\b(applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed|checked)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(applied|committed|rejected|skipped|recorded|accepted|resolved|completed|done|passed|checked)$/i));
+}
+
+function looksLikeAutonomousMergeHealthApplied(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(applied|committed)$/i.test(status)) return true;
+  if (/\b(applied|committed)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(applied|committed)$/i));
+}
+
+function looksLikeAutonomousMergeHealthCoordinatorReview(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(review|needs-review|coordinator-review|merge-review|pending-review|needs-port|escalated)$/i.test(status)) return true;
+  if (/\b(coordinator review|needs review|merge review|pending review|needs port|escalated)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(review|needs-review|coordinator-review|merge-review|pending-review|needs-port|escalated)$/i));
+}
+
+function looksLikeAutonomousMergeHealthRerun(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(rerun|stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(rerun|stale-against-head|stale|rebase)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(rerun|stale-against-head|stale)$/i));
+}
+
+function looksLikeAutonomousMergeHealthStale(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(stale-against-head|stale)$/i.test(status)) return true;
+  if (/\b(stale-against-head|stale|rebase)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(stale-against-head|stale)$/i)
+    || hasSwarmLifetimeStringArrayField(payload, ['wasteFlags', 'wasteReasons', 'flags'], /(?:stale|rerun|rebase)/i)
+  );
+}
+
+function looksLikeAutonomousMergeHealthCleanup(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(rerun|stale-against-head|stale|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i.test(status)) return true;
+  if (/\b(rerun|stale-against-head|stale|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap|rebase)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(rerun|stale-against-head|stale|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i)
+  );
+}
+
+function looksLikeAutonomousMergeHealthHumanQuestion(observation: AutonomousMergeHealthObservation): boolean {
+  return extractAutonomousMergeHealthHumanQuestionContract(observation) !== undefined;
+}
+
+function looksLikeContinuousPoolActiveWork(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(active|running|leased|working|in-?progress|inflight)$/i.test(status)) return true;
+  if (/\b(active|running|leased|working|in[- ]progress|inflight)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'lifecycle'], /^(active|running|leased|working|in-?progress|inflight)$/i));
+}
+
+function looksLikeContinuousPoolBacklog(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(queued|pending|backlog|waiting|ready|open|unstarted|runnable)$/i.test(status)) return true;
+  if (/\b(queued|pending|backlog|waiting|ready|open|unstarted|runnable)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(queued|pending|backlog|waiting|ready|open|unstarted|runnable)$/i));
+}
+
+function looksLikeContinuousPoolConflictBlock(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i.test(status)) return true;
+  if (/\b(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^(conflict|conflict-blocked|merge-conflict|textual-conflict|semantic-overlap)$/i));
+}
+
+function looksLikeContinuousPoolApplied(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(applied|committed)$/i.test(status)) return true;
+  if (/\b(applied|committed)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(applied|committed)$/i));
+}
+
+function looksLikeContinuousPoolRerun(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^rerun$/i.test(status)) return true;
+  if (/\brerun\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type'], /^rerun$/i));
+}
+
+function looksLikeContinuousPoolQuotaPressure(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(quota|quota-exhausted|quota-blocked|budget-exhausted|escalation-budget-exhausted|expensive-tier-saturated|at-capacity)$/i.test(status)) return true;
+  if (/\b(quota|budget|capacity|limit|saturated)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['backpressureReason', 'reason', 'status', 'state', 'phase', 'kind', 'type'], /(?:quota|budget|capacity|limit|saturated|budget-exhausted|escalation-budget-exhausted|expensive-tier-saturated|at-capacity)/i)
+  );
+}
+
+function looksLikeContinuousPoolCpuPressure(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(cpu|cpu-pressure|cpu-saturated|cpu-bound|overloaded)$/i.test(status)) return true;
+  if (/\b(cpu|cpu[- ]?pressure|overloaded|throttled|saturated|high load|cpu load)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type', 'pressure'], /(?:cpu|overloaded|throttled|saturated|high load|load)/i)
+    || firstSwarmLifetimeNumberField([payload], ['cpuPressure', 'cpuPressureScore', 'load', 'utilization']) !== undefined
+  );
+}
+
+function looksLikeContinuousPoolDirtyCheckout(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(dirty-worktree|dirty-checkout|dirty checkout|collect-only)$/i.test(status)) return true;
+  if (/\b(dirty[- ]?worktree|dirty[- ]?checkout|dirty paths?|collect[- ]only)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['skippedReason', 'reason', 'status', 'state', 'phase', 'kind', 'type'], /(?:dirty-worktree|dirty[- ]?checkout|dirty paths?|collect[- ]only)/i)
+  );
+}
+
+function looksLikeContinuousPoolLockContention(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(lock-contention|lock-contended|contention|lock-blocked)$/i.test(status)) return true;
+  if (/\b(lock[- ]?contention|contention|lock[- ]?blocked|lease contention|lock wait)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) =>
+    hasSwarmLifetimeStringField(payload, ['reason', 'status', 'state', 'phase', 'kind', 'type'], /(?:lock[- ]?contention|contention|lock[- ]?blocked|lease contention|lock wait)/i)
+  );
+}
+
+function looksLikeAppliedWorkCommitted(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(committed)$/i.test(status)) return true;
+  if (/\b(committed)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(committed)$/i));
+}
+
+function looksLikeAppliedWorkApplied(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(applied)$/i.test(status)) return true;
+  if (/\b(applied)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'resultStatus', 'outcome'], /^(applied)$/i));
+}
+
+function looksLikeAppliedWorkEvidenceOnly(observation: AutonomousMergeHealthObservation): boolean {
+  const status = observation.status?.toLowerCase();
+  if (status !== undefined && /^(evidence-only|discovery-only|record-only|skipped)$/i.test(status)) return true;
+  if (/\b(evidence-only|discovery-only|record-only|skipped)\b/.test(observation.text.toLowerCase())) return true;
+  return observation.payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['status', 'state', 'phase', 'kind', 'type', 'disposition'], /^(evidence-only|discovery-only|record-only|skipped)$/i));
+}
+
+function extractContinuousPoolTargetConcurrency(observations: readonly AutonomousMergeHealthObservation[]): number {
+  for (const observation of observations) {
+    const targetConcurrency = firstSwarmLifetimeNumberField(observation.payloads, [
+      'targetConcurrency',
+      'desiredConcurrency',
+      'concurrencyTarget',
+      'targetCount',
+      'targetWorkers',
+      'targetAgents',
+      'poolSize'
+    ]);
+    if (targetConcurrency !== undefined) return Math.max(0, Math.floor(targetConcurrency));
+  }
+  return 0;
+}
+
+function extractContinuousPoolAgentId(observation: AutonomousMergeHealthObservation): string | undefined {
+  const direct = firstAutonomousMergeHealthStringField(observation.payloads, ['agentId', 'workerId', 'coordinatorId', 'leaseId', 'ownerId', 'owner', 'sessionId']);
+  if (direct !== undefined) return direct;
+  return extractAutonomousMergeHealthCoordinatorId(observation.payloads);
+}
+
 function summarizeParts(
   registry: FrontierRegistryQueryResult,
   artifacts: readonly FrontierInspectArtifact[],
@@ -2895,9 +5283,9 @@ function classifySwarmLifetimeMeaning(observation: SwarmLifetimeObservation): Sw
 }
 
 function looksLikeTrueHumanQuestion(text: string, status: string | undefined, payloads: readonly unknown[]): boolean {
-  if (status !== undefined && /human[-\s]?blocked|human[-\s]?question/.test(status.toLowerCase())) return true;
-  if (/human-question:/.test(text) || /human question/.test(text)) return true;
-  return payloads.some((payload) => hasSwarmLifetimeStringField(payload, ['reason', 'question', 'missingAuthority', 'missing-authority'], /human-question:|human question/i));
+  void status;
+  return payloads.some((payload) => parseAutonomousMergeHealthHumanQuestionContractLine(extractSwarmLifetimeStringField(payload, ['reason', 'question', 'summary', 'message'])) !== undefined)
+    || (/human-question:/.test(text) ? parseAutonomousMergeHealthHumanQuestionContractLine(text.slice(text.indexOf('human-question:'))) !== undefined : false);
 }
 
 function looksLikeSuppressedAuditArtifact(
@@ -3186,19 +5574,8 @@ function extractSwarmLifetimeQuestionId(observation: SwarmLifetimeObservation): 
 }
 
 function extractSwarmLifetimeQuestionReasons(observation: SwarmLifetimeObservation): string[] {
-  const reasons: string[] = [];
-  for (const payload of observation.payloads) {
-    const directReason = extractSwarmLifetimeStringField(payload, ['reason', 'question', 'summary', 'message']);
-    if (directReason !== undefined) addUnique(reasons, directReason);
-    if (isRecord(payload)) {
-      for (const key of ['reason', 'question', 'summary', 'message']) {
-        const raw = payload[key];
-        if (typeof raw === 'string' && raw.startsWith('human-question:')) addUnique(reasons, raw);
-      }
-    }
-  }
-  if (reasons.length === 0 && /human-question:/.test(observation.text)) addUnique(reasons, observation.text.slice(observation.text.indexOf('human-question:')));
-  return reasons;
+  const contract = extractAutonomousMergeHealthHumanQuestionContract(observation);
+  return contract === undefined ? [] : [contract.reason];
 }
 
 function collectSwarmLifetimePackageGates(
